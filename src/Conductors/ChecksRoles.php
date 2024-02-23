@@ -45,6 +45,17 @@ class ChecksRoles
     }
 
     /**
+     * Check if the authority has any of the given roles.
+     *
+     * @param  string  ...$roles
+     * @return bool
+     */
+    public function on($roles, $entities)
+    {
+        return $this->clipboard->checkRoleOn($this->authority, $roles, $entities, 'or');
+    }
+
+    /**
      * Check if the authority doesn't have any of the given roles.
      *
      * @param  string  ...$roles

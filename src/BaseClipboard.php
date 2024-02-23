@@ -47,6 +47,49 @@ abstract class BaseClipboard implements Contracts\Clipboard
     }
 
     /**
+     * Check if an authority has the given roles.
+     *
+     * @param  \Illuminate\Database\Eloquent\Model  $authority
+     * @param  array|string  $roles
+     * @param  string  $boolean
+     * @return bool
+     */
+    public function checkRoleOn(Model $authority, $roles, $entities, $boolean = 'or')
+    {
+
+        if (!$entities instanceof Collection && !is_array($entities)) {
+            $entities = collect([$entities]);
+        }
+
+        $assignedRoles = $authority->roles()->get([
+            'name', Models::role()->getQualifiedKeyName(),
+            'restricted_to_id',
+            'restricted_to_type'
+        ]);
+
+        $count = 0;
+        $assignedRoles->each(function ($assignedRole) use(&$count, $entities, $roles) {
+            $entities->each(function($entity) use(&$count, $assignedRole, $roles) {
+                if ($assignedRole->restricted_to_id == $entity->id && $assignedRole->restricted_to_type == get_class($entity)) {
+                    foreach ((array) $roles as $role) {
+                        if($role == $assignedRole->name) {
+                            $count++;
+                        }
+                    }
+                }
+            });
+        });
+
+        if ($boolean == 'or') {
+            return $count > 0;
+        } elseif ($boolean === 'not') {
+            return $count === 0;
+        }
+
+        return $count == (count((array) $roles) * count((array) $entities));
+    }
+
+    /**
      * Count the authority's roles matching the given roles.
      *
      * @param  \Illuminate\Database\Eloquent\Model  $authority

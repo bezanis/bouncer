@@ -29,17 +29,18 @@ class AssignsRoles
     /**
      * Assign the roles to the given authority.
      *
-     * @param  \Illuminate\Database\Eloquent\Model|array|int  $authority
+     * @param \Illuminate\Database\Eloquent\Model|array|int $authority
+     * @param \Illuminate\Database\Eloquent\Model|array $entities
      * @return bool
      */
-    public function to($authority)
+    public function to($authority, $entities = null)
     {
         $authorities = is_array($authority) ? $authority : [$authority];
 
         $roles = Models::role()->findOrCreateRoles($this->roles);
 
         foreach (Helpers::mapAuthorityByClass($authorities) as $class => $ids) {
-            $this->assignRoles($roles, $class, new Collection($ids));
+            $this->assignRoles($roles, $class, new Collection($ids), $entities);
         }
 
         return true;
@@ -53,7 +54,7 @@ class AssignsRoles
      * @param  \Illuminate\Support\Collection  $authorityIds
      * @return void
      */
-    protected function assignRoles(Collection $roles, $authorityClass, Collection $authorityIds)
+    protected function assignRoles(Collection $roles, $authorityClass, Collection $authorityIds, $entities)
     {
         $roleIds = $roles->map(function ($model) {
             return $model->getKey();
@@ -61,7 +62,7 @@ class AssignsRoles
 
         $morphType = (new $authorityClass)->getMorphClass();
 
-        $records = $this->buildAttachRecords($roleIds, $morphType, $authorityIds);
+        $records = $this->buildAttachRecords($roleIds, $morphType, $authorityIds, $entities);
 
         $existing = $this->getExistingAttachRecords($roleIds, $morphType, $authorityIds);
 
@@ -96,17 +97,31 @@ class AssignsRoles
      * @param  \Illuminate\Support\Collection  $authorityIds
      * @return \Illuminate\Support\Collection
      */
-    protected function buildAttachRecords($roleIds, $morphType, $authorityIds)
+    protected function buildAttachRecords($roleIds, $morphType, $authorityIds, $entities)
     {
-        return $roleIds
-            ->crossJoin($authorityIds)
-            ->mapSpread(function ($roleId, $authorityId) use ($morphType) {
-                return Models::scope()->getAttachAttributes() + [
-                    'role_id' => $roleId,
-                    'entity_id' => $authorityId,
-                    'entity_type' => $morphType,
-                ];
-            });
+        if (!$entities) {
+            $entities = collect([null]);
+        } else if(is_array($entities)) {
+            $entities = collect($entities);
+        } else if(!is_a($entities, 'Illuminate\Support\Collection') && !is_a($entities, 'Illuminate\Database\Eloquent\Collection')) {
+            $entities = collect([$entities]);
+        }
+        $attachRecordsBuilder = collect();
+        $entities->each(function($entity) use($roleIds, $morphType, $authorityIds, &$attachRecordsBuilder) {
+            $builderForEntity = $roleIds
+                ->crossJoin($authorityIds)
+                ->mapSpread(function ($roleId, $authorityId) use ($morphType, $entity) {
+                    return Models::scope()->getAttachAttributes() + [
+                            'role_id' => $roleId,
+                            'entity_id' => $authorityId,
+                            'entity_type' => $morphType,
+                            'restricted_to_id' => $entity?$entity->id:null,
+                            'restricted_to_type' => $entity?get_class($entity):null,
+                        ];
+                });
+            $attachRecordsBuilder = $attachRecordsBuilder->merge($builderForEntity);
+        });
+        return $attachRecordsBuilder;
     }
 
     /**
@@ -137,7 +152,7 @@ class AssignsRoles
      */
     protected function getAttachRecordHash(array $record)
     {
-        return $record['role_id'].$record['entity_id'].$record['entity_type'];
+        return $record['role_id'].$record['entity_id'].$record['entity_type'].$record['restricted_to_id'].$record['restricted_to_type'];
     }
 
     /**
