@@ -32,7 +32,7 @@ class RemovesRoles
      * @param  \Illuminate\Database\Eloquent\Model|array|int  $authority
      * @return void
      */
-    public function from($authority)
+    public function from($authority, $entities = null)
     {
         if (! ($roleIds = $this->getRoleIds())) {
             return;
@@ -41,7 +41,7 @@ class RemovesRoles
         $authorities = is_array($authority) ? $authority : [$authority];
 
         foreach (Helpers::mapAuthorityByClass($authorities) as $class => $keys) {
-            $this->retractRoles($roleIds, $class, $keys);
+            $this->retractRoles($roleIds, $class, $keys, $entities);
         }
     }
 
@@ -91,17 +91,27 @@ class RemovesRoles
      * @param  array $authorityIds
      * @return void
      */
-    protected function retractRoles($roleIds, $authorityClass, $authorityIds)
+    protected function retractRoles($roleIds, $authorityClass, $authorityIds, $entities = null)
     {
         $query = $this->newPivotTableQuery();
 
         $morphType = (new $authorityClass)->getMorphClass();
 
+        if (!$entities) {
+            $entities = collect([null]);
+        } else if(is_array($entities)) {
+            $entities = collect($entities);
+        } else if(!is_a($entities, 'Illuminate\Support\Collection') && !is_a($entities, 'Illuminate\Database\Eloquent\Collection')) {
+            $entities = collect([$entities]);
+        }
+
         foreach ($roleIds as $roleId) {
             foreach ($authorityIds as $authorityId) {
-                $query->orWhere($this->getDetachQueryConstraint(
-                    $roleId, $authorityId, $morphType
-                ));
+                foreach ($entities as $entity) {
+                    $query->orWhere($this->getDetachQueryConstraint(
+                        $roleId, $authorityId, $morphType, $entity
+                    ));
+                }
             }
         }
 
@@ -116,13 +126,15 @@ class RemovesRoles
      * @param  string  $morphType
      * @return \Closure
      */
-    protected function getDetachQueryConstraint($roleId, $authorityId, $morphType)
+    protected function getDetachQueryConstraint($roleId, $authorityId, $morphType, $entity)
     {
-        return function ($query) use ($roleId, $authorityId, $morphType) {
+        return function ($query) use ($roleId, $authorityId, $morphType, $entity) {
             $query->where(Models::scope()->getAttachAttributes() + [
                 'role_id' => $roleId,
                 'entity_id' => $authorityId,
                 'entity_type' => $morphType,
+                'restricted_to_id' => $entity?$entity->id:null,
+                'restricted_to_type' => $entity?get_class($entity):null,
             ]);
         };
     }
