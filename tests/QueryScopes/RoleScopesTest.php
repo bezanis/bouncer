@@ -127,9 +127,7 @@ class RoleScopesTest extends BaseTestCase
 
 
         $bouncer->assign('user-editor')->to($user, $onUser4);
-
         $this->assertEquals(6, $this->db()->table('assigned_roles')->count());
-
 
         $user3 = User::create();
         $bouncer = $this->bouncer($user3);
@@ -149,8 +147,6 @@ class RoleScopesTest extends BaseTestCase
         $bouncer->assign(collect(['user-viewer', 'user-editor']))->to($user2, collect([$onUser7, $onUser8]));
         $this->assertEquals(14, $this->db()->table('assigned_roles')->count());
     }
-
-
 
     /**
      * @test
@@ -188,13 +184,17 @@ class RoleScopesTest extends BaseTestCase
         $this->assertTrue($bouncer->is($user)->on('user-viewer', $onUser2));
         $this->assertFalse($bouncer->is($user)->on('user-editor', $onUser2));
 
-        $bouncer->assign(['user-viewer','user-editor'])->to($user, $onUser3);
-        $this->assertEquals(3, $this->db()->table('assigned_roles')->count());
+        $bouncer->assign(['user-viewer','user-editor'])->to($user, [$onUser2, $onUser3]);
+        $this->assertEquals(4, $this->db()->table('assigned_roles')->count());
+        $this->assertTrue($bouncer->is($user)->on('user-viewer', $onUser2));
+        $this->assertTrue($bouncer->is($user)->on('user-editor', $onUser2));
         $this->assertTrue($bouncer->is($user)->on('user-viewer', $onUser3));
         $this->assertTrue($bouncer->is($user)->on('user-editor', $onUser3));
 
         $bouncer->retract(['user-editor'])->from($user, $onUser3);
-        $this->assertEquals(2, $this->db()->table('assigned_roles')->count());
+        $this->assertEquals(3, $this->db()->table('assigned_roles')->count());
+        $this->assertTrue($bouncer->is($user)->on('user-viewer', $onUser2));
+        $this->assertTrue($bouncer->is($user)->on('user-editor', $onUser2));
         $this->assertTrue($bouncer->is($user)->on('user-viewer', $onUser3));
         $this->assertFalse($bouncer->is($user)->on('user-editor', $onUser3));
 
