@@ -377,6 +377,18 @@ class Bouncer
     }
 
     /**
+     * Determine if the given ability is allowed.
+     *
+     * @param  string  $ability
+     * @param  array|mixed  $arguments
+     * @return bool
+     */
+    public function canWithOptionalArgs($ability, $arguments = [])
+    {
+        return $this->can($ability) || $this->canAny($ability, $arguments);
+    }
+
+    /**
      * Determine if any of the given abilities are allowed.
      *
      * @param  array  $abilities
@@ -398,6 +410,18 @@ class Bouncer
     public function cannot($ability, $arguments = [])
     {
         return $this->gate()->denies($ability, $arguments);
+    }
+
+    /**
+     * Determine if any of the given abilities are allowed.
+     *
+     * @param  array  $abilities
+     * @param  array|mixed  $arguments
+     * @return bool
+     */
+    public function cannotWithOptionalArgs($ability, $arguments = [])
+    {
+        return $this->cannot($ability, $arguments) && $this->cannot($ability);
     }
 
     /**
