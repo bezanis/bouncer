@@ -2,6 +2,7 @@
 
 namespace Silber\Bouncer\Conductors;
 
+use Silber\Bouncer\BouncerFacade;
 use Silber\Bouncer\Helpers;
 use Illuminate\Support\Collection;
 use Silber\Bouncer\Database\Models;
@@ -41,6 +42,9 @@ class AssignsRoles
 
         foreach (Helpers::mapAuthorityByClass($authorities) as $class => $ids) {
             $this->assignRoles($roles, $class, new Collection($ids), $entities);
+        }
+        foreach ($authorities as $authority) {
+            BouncerFacade::getClipboard()->refreshFor($authority);
         }
 
         return true;

@@ -2,6 +2,7 @@
 
 namespace Silber\Bouncer\Conductors;
 
+use Silber\Bouncer\BouncerFacade;
 use Silber\Bouncer\Helpers;
 use Silber\Bouncer\Database\Role;
 use Silber\Bouncer\Database\Models;
@@ -42,6 +43,9 @@ class RemovesRoles
 
         foreach (Helpers::mapAuthorityByClass($authorities) as $class => $keys) {
             $this->retractRoles($roleIds, $class, $keys, $entities);
+        }
+        foreach ($authorities as $authority) {
+            BouncerFacade::getClipboard()->refreshFor($authority);
         }
     }
 
