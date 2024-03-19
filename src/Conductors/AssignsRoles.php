@@ -3,10 +3,12 @@
 namespace Silber\Bouncer\Conductors;
 
 use Silber\Bouncer\BouncerFacade;
+use Silber\Bouncer\CachedClipboard;
 use Silber\Bouncer\Helpers;
 use Illuminate\Support\Collection;
 use Silber\Bouncer\Database\Models;
 use Illuminate\Database\Eloquent\Model;
+use function PHPUnit\Framework\isInstanceOf;
 
 class AssignsRoles
 {
@@ -43,8 +45,10 @@ class AssignsRoles
         foreach (Helpers::mapAuthorityByClass($authorities) as $class => $ids) {
             $this->assignRoles($roles, $class, new Collection($ids), $entities);
         }
-        foreach ($authorities as $authority) {
-            BouncerFacade::getClipboard()->refreshFor($authority);
+        if(BouncerFacade::getClipboard()instanceof CachedClipboard) {
+            foreach ($authorities as $authority) {
+                BouncerFacade::getClipboard()->refreshFor($authority);
+            }
         }
 
         return true;
