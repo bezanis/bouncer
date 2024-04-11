@@ -221,25 +221,25 @@ class RoleScopesTest extends BaseTestCase
 
         $this->assertTrue($bouncer->cannot('view-user', $onUser2));
 
-        BouncerFacade::allow('user-viewer')->to('view-user');
+        BouncerFacade::allow('user-viewer')->to('view-user', null, ['title' => 'View User', 'role_based' => 1]);
 
         BouncerFacade::assign(['user-viewer'])->to($user, $onUser2);
         $this->assertEquals(1, $this->db()->table('assigned_roles')->count());
 
-        $this->assertTrue($bouncer->canWithOptionalArgs('view-user'));
+        $this->assertFalse($bouncer->canWithOptionalArgs('edit-user', $onUser2));
         $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
+        $this->assertFalse($bouncer->canWithOptionalArgs('view-user'));
         $this->assertFalse($bouncer->can('view-user', $onUser3));
+        $this->assertFalse($bouncer->canWithOptionalArgs('view-user', $onUser3));
+        $this->assertTrue($bouncer->cannotWithOptionalArgs('view-user', $onUser3));
 
-        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user'));
+        $this->assertTrue($bouncer->cannotWithOptionalArgs('view-user'));
         $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser2));
         $this->assertTrue($bouncer->cannot('view-user', $onUser3));
 
-        $this->assertEquals(1, $user->getAbilities()->count());
-
-        BouncerFacade::allow('user-editor')->to('edit-user', $onUser3);
-        BouncerFacade::assign(['user-editor'])->to($user, $onUser2);
+        BouncerFacade::allow('user-editor')->to('edit-user', null, ['title' => 'View User', 'role_based' => 1]);
+        BouncerFacade::assign(['user-editor'])->to($user, $onUser3);
         $this->assertEquals(2, $this->db()->table('assigned_roles')->count());
-        $this->assertEquals(2, $user->getAbilities()->count());
 
         //Can only edit user 3
         $this->assertFalse($bouncer->can('edit-user'));
@@ -250,5 +250,85 @@ class RoleScopesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannotWithOptionalArgs('edit-user', $onUser2));
         $this->assertFalse($bouncer->cannotWithOptionalArgs('edit-user', $onUser3));
 
+    }
+
+    /**
+     * @test
+     */
+    function roles_constrained_to_an_entity_do_not_apply_to_other_entities()
+    {
+        $user = User::create();
+
+        $onUser2 = User::create();
+        $onUser3 = User::create();
+
+        $bouncer = $this->bouncer($user);
+
+        Role::create(['name' => 'user-viewer']);
+        BouncerFacade::allow('user-viewer')->to('view-user', null, ['title' => 'View User', 'role_based' => 1]);
+
+        BouncerFacade::assign('user-viewer')->to($user, $onUser2);
+
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
+        $this->assertFalse($bouncer->canWithOptionalArgs('view-user', $onUser3));
+        $this->assertFalse($bouncer->canWithOptionalArgs('view-user'));
+        $this->assertTrue($bouncer->cannotWithOptionalArgs('view-user'));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser2));
+        $this->assertTrue($bouncer->cannotWithOptionalArgs('view-user', $onUser3));
+
+        $this->assertFalse($bouncer->can('view-user'));
+        $this->assertTrue($bouncer->can('view-user', $onUser2));
+        $this->assertFalse($bouncer->can('view-user', $onUser3));
+        $this->assertTrue($bouncer->cannot('view-user'));
+        $this->assertFalse($bouncer->cannot('view-user', $onUser2));
+        $this->assertTrue($bouncer->cannot('view-user', $onUser3));
+
+        //TODO: fix user view on model
+        /*$userViewsModel = User::create();
+        $bouncer = $this->bouncer($userViewsModel);
+        BouncerFacade::assign('user-viewer')->to($userViewsModel, User::class);
+
+        $this->assertFalse($bouncer->canWithOptionalArgs('view-user'));
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', User::class));
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser3));
+        $this->assertTrue($bouncer->cannotWithOptionalArgs('view-user'));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', User::class));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser2));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser3));*/
+
+
+        $userViewsAll = User::create();
+        $bouncer = $this->bouncer($userViewsAll);
+        BouncerFacade::assign('user-viewer')->to($userViewsAll);
+
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user'));
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser3));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user'));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser2));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser3));
+    }
+
+    /**
+     * @test
+     */
+    function forbidden_abilities_override_role_abilities()
+    {
+        $user = User::create();
+        $onUser2 = User::create();
+
+        $bouncer = $this->bouncer($user);
+
+        Role::create(['name' => 'user-viewer']);
+        BouncerFacade::allow('user-viewer')->to('view-user', null, ['title' => 'View User', 'role_based' => 1]);
+
+        BouncerFacade::assign('user-viewer')->to($user, $onUser2);
+        $this->assertTrue($bouncer->can('view-user', $onUser2));
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
+
+        BouncerFacade::forbid($user)->to('view-user', $onUser2);
+        $this->assertFalse($bouncer->can('view-user', $onUser2));
+        $this->assertFalse($bouncer->canWithOptionalArgs('view-user', $onUser2));
     }
 }

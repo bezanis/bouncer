@@ -71,7 +71,8 @@ class AbilitiesForModel
 
         return $query->where(function ($query) use ($model, $strict) {
             $query->where("{$this->table}.entity_type", '*')
-                  ->orWhere($this->modelAbilityConstraint($model, $strict));
+                ->orWhere("{$this->table}.role_based", true)
+                ->orWhere($this->modelAbilityConstraint($model, $strict));
         });
     }
 

@@ -16,10 +16,10 @@ class Abilities
      * @param  bool  $allowed
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public static function forAuthority(Model $authority, $allowed = true)
+    public static function forAuthority(Model $authority, $allowed = true, $modelRestriction = null)
     {
-        return Models::ability()->where(function ($query) use ($authority, $allowed) {
-            $query->whereExists(static::getRoleConstraint($authority, $allowed));
+        return Models::ability()->where(function ($query) use ($authority, $allowed, $modelRestriction) {
+            $query->whereExists(static::getRoleConstraint($authority, $allowed, $modelRestriction));
             $query->orWhereExists(static::getAuthorityConstraint($authority, $allowed));
             $query->orWhereExists(static::getEveryoneConstraint($allowed));
         });
@@ -43,24 +43,24 @@ class Abilities
      * @param  bool  $allowed
      * @return \Closure
      */
-    protected static function getRoleConstraint(Model $authority, $allowed)
+    protected static function getRoleConstraint(Model $authority, $allowed, $modelRestriction = null)
     {
-        return function ($query) use ($authority, $allowed) {
+        return function ($query) use ($authority, $allowed, $modelRestriction) {
             $permissions = Models::table('permissions');
             $abilities   = Models::table('abilities');
             $roles       = Models::table('roles');
 
             $query->from($roles)
-                  ->join($permissions, $roles.'.id', '=', $permissions.'.entity_id')
-                  ->whereColumn("{$permissions}.ability_id", "{$abilities}.id")
-                  ->where($permissions.".forbidden", ! $allowed)
-                  ->where($permissions.".entity_type", Models::role()->getMorphClass());
+                ->join($permissions, $roles.'.id', '=', $permissions.'.entity_id')
+                ->whereColumn("{$permissions}.ability_id", "{$abilities}.id")
+                ->where($permissions.".forbidden", ! $allowed)
+                ->where($permissions.".entity_type", Models::role()->getMorphClass());
 
             Models::scope()->applyToModelQuery($query, $roles);
             Models::scope()->applyToRelationQuery($query, $permissions);
 
-            $query->where(function ($query) use ($roles, $authority, $allowed) {
-                $query->whereExists(static::getAuthorityRoleConstraint($authority));
+            $query->where(function ($query) use ($roles, $authority, $allowed, $modelRestriction) {
+                $query->whereExists(static::getAuthorityRoleConstraint($authority, $allowed, $modelRestriction));
             });
         };
     }
@@ -71,9 +71,10 @@ class Abilities
      * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @return \Closure
      */
-    protected static function getAuthorityRoleConstraint(Model $authority)
+    protected static function getAuthorityRoleConstraint(Model $authority, $allowed, $modelRestriction = null)
     {
-        return function ($query) use ($authority) {
+        return function ($query) use ($authority, $allowed, $modelRestriction) {
+
             $pivot  = Models::table('assigned_roles');
             $roles  = Models::table('roles');
             $table  = $authority->getTable();
@@ -83,6 +84,22 @@ class Abilities
                   ->whereColumn("{$pivot}.role_id", "{$roles}.id")
                   ->where($pivot.'.entity_type', $authority->getMorphClass())
                   ->where("{$table}.{$authority->getKeyName()}", $authority->getKey());
+
+            if ($allowed) {
+                if($modelRestriction){
+                    if (is_string($modelRestriction)) {
+                        $query->whereNull($pivot.'.restricted_to_id');
+                        $query->where($pivot.'.restricted_to_type', $modelRestriction);
+                    } else {
+                        $query->where($pivot . '.restricted_to_id', $modelRestriction->id);
+                        $query->where($pivot . '.restricted_to_type', get_class($modelRestriction));
+                    }
+                } else {
+                    $query->whereNull($pivot.'.restricted_to_id');
+                    $query->whereNull($pivot.'.restricted_to_type');
+                }
+            }
+
 
             Models::scope()->applyToModelQuery($query, $roles);
             Models::scope()->applyToRelationQuery($query, $pivot);

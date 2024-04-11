@@ -123,8 +123,8 @@ class AssignsRoles
                             'role_id' => $roleId,
                             'entity_id' => $authorityId,
                             'entity_type' => $morphType,
-                            'restricted_to_id' => $entity?$entity->id:null,
-                            'restricted_to_type' => $entity?get_class($entity):null,
+                            'restricted_to_id' => ($entity && is_object($entity))?$entity->id:null,
+                            'restricted_to_type' => $entity?(is_object($entity)?get_class($entity):$entity):null,
                         ];
                 });
             $attachRecordsBuilder = $attachRecordsBuilder->merge($builderForEntity);

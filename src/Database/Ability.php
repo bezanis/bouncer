@@ -13,7 +13,7 @@ class Ability extends Model
      *
      * @var array
      */
-    protected $fillable = ['name', 'title'];
+    protected $fillable = ['name', 'title', 'role_based'];
 
     /**
      * The attributes that should be cast to native types.
@@ -24,6 +24,7 @@ class Ability extends Model
         'id' => 'int',
         'entity_id' => 'int',
         'only_owned' => 'boolean',
+        'role_based' => 'boolean'
     ];
 
     /**

@@ -3,6 +3,8 @@
 namespace Silber\Bouncer;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Silber\Bouncer\Database\Queries\Abilities;
 
 class Clipboard extends BaseClipboard
@@ -69,7 +71,7 @@ class Clipboard extends BaseClipboard
      */
     protected function getHasAbilityQuery($authority, $ability, $model, $allowed)
     {
-        $query = Abilities::forAuthority($authority, $allowed);
+        $query = Abilities::forAuthority($authority, $allowed, $model);
 
         if (! $this->isOwnedBy($authority, $model)) {
             $query->where('only_owned', false);
@@ -80,6 +82,20 @@ class Clipboard extends BaseClipboard
         }
 
         return $query->byName($ability)->forModel($model);
+    }
+
+    public static function rawQuery($query)
+    {
+        $sql = (string)$query->toSql();
+        $sql = str_replace('%', '%%', $sql);
+        $bindings = Arr::flatten($query->getBindings());
+
+        array_walk($bindings, function (&$item) {
+            $item = DB::connection()->getPdo()->quote($item);
+        });
+        $sqlString = vsprintf(str_replace('?', '%s', $sql), $bindings);
+
+        return $sqlString;
     }
 
     /**
