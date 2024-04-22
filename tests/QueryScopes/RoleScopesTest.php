@@ -3,12 +3,14 @@
 namespace Silber\Bouncer\Tests\QueryScopes;
 
 use Silber\Bouncer\BouncerFacade;
+use Silber\Bouncer\Tests\Concerns\TestsClipboards;
 use Silber\Bouncer\Tests\User;
 use Silber\Bouncer\Database\Role;
 use Silber\Bouncer\Tests\BaseTestCase;
 
 class RoleScopesTest extends BaseTestCase
 {
+    use TestsClipboards;
     /**
      * @test
      */
@@ -225,6 +227,7 @@ class RoleScopesTest extends BaseTestCase
 
         BouncerFacade::assign(['user-viewer'])->to($user, $onUser2);
         $this->assertEquals(1, $this->db()->table('assigned_roles')->count());
+        $this->assertEquals(1, $user->getAbilities()->count());
 
         $this->assertFalse($bouncer->canWithOptionalArgs('edit-user', $onUser2));
         $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
@@ -240,6 +243,7 @@ class RoleScopesTest extends BaseTestCase
         BouncerFacade::allow('user-editor')->to('edit-user', null, ['title' => 'View User', 'role_based' => 1]);
         BouncerFacade::assign(['user-editor'])->to($user, $onUser3);
         $this->assertEquals(2, $this->db()->table('assigned_roles')->count());
+        $this->assertEquals(2, $user->getAbilities()->count());
 
         //Can only edit user 3
         $this->assertFalse($bouncer->can('edit-user'));
@@ -283,21 +287,6 @@ class RoleScopesTest extends BaseTestCase
         $this->assertFalse($bouncer->cannot('view-user', $onUser2));
         $this->assertTrue($bouncer->cannot('view-user', $onUser3));
 
-        //TODO: fix user view on model
-        /*$userViewsModel = User::create();
-        $bouncer = $this->bouncer($userViewsModel);
-        BouncerFacade::assign('user-viewer')->to($userViewsModel, User::class);
-
-        $this->assertFalse($bouncer->canWithOptionalArgs('view-user'));
-        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', User::class));
-        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
-        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser3));
-        $this->assertTrue($bouncer->cannotWithOptionalArgs('view-user'));
-        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', User::class));
-        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser2));
-        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser3));*/
-
-
         $userViewsAll = User::create();
         $bouncer = $this->bouncer($userViewsAll);
         BouncerFacade::assign('user-viewer')->to($userViewsAll);
@@ -306,6 +295,61 @@ class RoleScopesTest extends BaseTestCase
         $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
         $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser3));
         $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user'));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser2));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser3));
+    }
+
+    /**
+     * @test
+     */
+    function get_abilities_through_role_constrains_entities()
+    {
+        $user = User::create();
+
+        Role::create(['name' => 'user-viewer']);
+
+        $onUser2 = User::create();
+
+        $abilities = $user->getAbilities();
+        $this->assertEquals(0, $abilities->count());
+
+        BouncerFacade::allow('user-viewer')->to('view-user', null, ['title' => 'View User', 'role_based' => 1]);
+
+        BouncerFacade::assign(['user-viewer'])->to($user, $onUser2);
+        $this->assertEquals(1, $this->db()->table('assigned_roles')->count());
+        $abilities = $user->getAbilities();
+        $this->assertEquals(1, $abilities->count());
+        $this->assertNotNull($abilities->first()->entity_id);
+        $this->assertNotNull($abilities->first()->entity_type);
+
+    }
+
+    //TODO: fix user view on model
+    /**
+     * @test
+     */
+    function roles_constrained_to_a_class_apply_to_entities()
+    {
+        $user = User::create();
+
+        $onUser2 = User::create();
+        $onUser3 = User::create();
+
+        $bouncer = $this->bouncer($user);
+
+        Role::create(['name' => 'user-viewer']);
+        BouncerFacade::allow('user-viewer')->to('view-user', null, ['title' => 'View User', 'role_based' => 1]);
+
+        //$userViewsModel = User::create();
+        //$bouncer = $this->bouncer($userViewsModel);
+        //BouncerFacade::assign('user-viewer')->to($userViewsModel, User::class);
+
+        //$this->assertFalse($bouncer->canWithOptionalArgs('view-user'));
+        //$this->assertTrue($bouncer->canWithOptionalArgs('view-user', User::class));
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser3));
+        $this->assertTrue($bouncer->cannotWithOptionalArgs('view-user'));
+        $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', User::class));
         $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser2));
         $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser3));
     }

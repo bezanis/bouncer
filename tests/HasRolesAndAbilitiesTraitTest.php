@@ -20,6 +20,11 @@ class HasRolesAndAbilitiesTraitTest extends BaseTestCase
         $bouncer->allow($user)->to('create-posts');
         $bouncer->assign('admin')->to($user);
 
+        $this->assertEquals(
+            ['create-posts', 'edit-site'],
+            $user->getAbilities()->pluck('name')->sort()->values()->all()
+        );
+
         $bouncer->forbid($user)->to('create-sites');
         $bouncer->allow('editor')->to('edit-posts');
 
@@ -173,11 +178,13 @@ class HasRolesAndAbilitiesTraitTest extends BaseTestCase
         $user->assign('admin');
 
         $this->assertEquals(['admin'], $user->getRoles()->all());
+        $this->assertTrue($user->can('edit-site'));
         $this->assertTrue($bouncer->can('edit-site'));
 
         $user->retract('admin');
 
         $this->assertEquals([], $user->getRoles()->all());
+        $this->assertTrue($user->cannot('edit-site'));
         $this->assertTrue($bouncer->cannot('edit-site'));
     }
 

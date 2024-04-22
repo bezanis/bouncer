@@ -147,9 +147,9 @@ abstract class BaseClipboard implements Contracts\Clipboard
      * @param  bool  $allowed
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getAbilities(Model $authority, $allowed = true)
+    public function getAbilities(Model $authority, $allowed = true, $abilities = null, $restrictionModel = null)
     {
-        return Abilities::forAuthority($authority, $allowed)->get();
+        return Abilities::forAuthority($authority, $allowed, $abilities, $restrictionModel)->get();
     }
 
     /**

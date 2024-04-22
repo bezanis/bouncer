@@ -5,6 +5,7 @@ namespace Silber\Bouncer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Silber\Bouncer\Database\Models;
 use Silber\Bouncer\Database\Queries\Abilities;
 
 class Clipboard extends BaseClipboard
@@ -71,7 +72,7 @@ class Clipboard extends BaseClipboard
      */
     protected function getHasAbilityQuery($authority, $ability, $model, $allowed)
     {
-        $query = Abilities::forAuthority($authority, $allowed, $model);
+        $query = Abilities::forAuthority($authority, $allowed, $ability, $model);
 
         if (! $this->isOwnedBy($authority, $model)) {
             $query->where('only_owned', false);
@@ -81,21 +82,7 @@ class Clipboard extends BaseClipboard
             return $this->constrainToSimpleAbility($query, $ability);
         }
 
-        return $query->byName($ability)->forModel($model);
-    }
-
-    public static function rawQuery($query)
-    {
-        $sql = (string)$query->toSql();
-        $sql = str_replace('%', '%%', $sql);
-        $bindings = Arr::flatten($query->getBindings());
-
-        array_walk($bindings, function (&$item) {
-            $item = DB::connection()->getPdo()->quote($item);
-        });
-        $sqlString = vsprintf(str_replace('?', '%s', $sql), $bindings);
-
-        return $sqlString;
+        return $query->forModel($model);
     }
 
     /**
@@ -107,12 +94,11 @@ class Clipboard extends BaseClipboard
      */
     protected function constrainToSimpleAbility($query, $ability)
     {
-        return $query->where(function ($query) use ($ability) {
-            $query->where('name', $ability)->whereNull('entity_type');
-
-            $query->orWhere(function ($query) use ($ability) {
-                $query->where('name', '*')->where(function ($query) {
-                    $query->whereNull('entity_type')->orWhere('entity_type', '*');
+        $abilitiesTable = Models::table('abilities');
+        return $query->where(function ($query) use ($ability, $abilitiesTable) {
+            $query->where(function ($query) use ($ability, $abilitiesTable) {
+                $query->whereIn($abilitiesTable . '.name', ['*', $ability])->where(function ($query) use ($abilitiesTable) {
+                    $query->whereNull($abilitiesTable.'.entity_type')->orWhere($abilitiesTable.'.entity_type', '*');
                 });
             });
         });

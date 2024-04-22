@@ -220,6 +220,9 @@ trait IsAbility
      */
     public function scopeByName($query, $name, $strict = false)
     {
+        if($name === null) {
+            return;
+        }
         $names = (array) $name;
 
         if (! $strict && $name !== '*') {

@@ -90,8 +90,10 @@ class ForbidTest extends BaseTestCase
         list($bouncer, $user1, $user2) = $provider(2);
 
         $bouncer->allow($user1)->to('delete', User::class);
+        $this->assertTrue($bouncer->can('delete', $user1));
         $bouncer->forbid($user1)->to('delete', $user2);
 
+        $this->assertFalse($bouncer->can('delete', $user2));
         $this->assertTrue($bouncer->can('delete', $user1));
     }
 

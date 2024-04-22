@@ -87,7 +87,7 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
         }
 
         return $this->findMatchingAbility(
-            $this->getAbilities($authority), $applicable, $model, $authority
+            $this->getAbilities($authority, true, $ability, $model), $applicable, $model, $authority
         );
     }
 
@@ -193,7 +193,7 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
      * @param  bool  $allowed
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getAbilities(Model $authority, $allowed = true)
+    public function getAbilities(Model $authority, $allowed = true, $abilityNames = null, $restrictionModel = null)
     {
         $key = $this->getCacheKey($authority, 'abilities', $allowed);
 
@@ -201,7 +201,7 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
             return $this->deserializeAbilities($abilities);
         }
 
-        $abilities = $this->getFreshAbilities($authority, $allowed);
+        $abilities = $this->getFreshAbilities($authority, $allowed, $abilityNames, $restrictionModel);
 
         $this->cache->forever($key, $this->serializeAbilities($abilities));
 
@@ -215,9 +215,9 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
      * @param  bool  $allowed
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getFreshAbilities(Model $authority, $allowed)
+    public function getFreshAbilities(Model $authority, $allowed, $abilityNames = null, $restrictionModel = null)
     {
-        return parent::getAbilities($authority, $allowed);
+        return parent::getAbilities($authority, $allowed, $abilityNames, $restrictionModel );
     }
 
     /**
