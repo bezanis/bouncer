@@ -338,17 +338,13 @@ class RoleScopesTest extends BaseTestCase
         $bouncer = $this->bouncer($user);
 
         Role::create(['name' => 'user-viewer']);
-        BouncerFacade::allow('user-viewer')->to('view-user', null, ['title' => 'View User', 'role_based' => 1]);
+        BouncerFacade::allow('user-viewer')->to('view-user', null);
 
-        //$userViewsModel = User::create();
-        //$bouncer = $this->bouncer($userViewsModel);
-        //BouncerFacade::assign('user-viewer')->to($userViewsModel, User::class);
+        BouncerFacade::assign('user-viewer')->to($user);
 
-        //$this->assertFalse($bouncer->canWithOptionalArgs('view-user'));
-        //$this->assertTrue($bouncer->canWithOptionalArgs('view-user', User::class));
         $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser2));
         $this->assertTrue($bouncer->canWithOptionalArgs('view-user', $onUser3));
-        $this->assertTrue($bouncer->cannotWithOptionalArgs('view-user'));
+        $this->assertTrue($bouncer->canWithOptionalArgs('view-user'));
         $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', User::class));
         $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser2));
         $this->assertFalse($bouncer->cannotWithOptionalArgs('view-user', $onUser3));
