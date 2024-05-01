@@ -102,7 +102,8 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
      */
     protected function findMatchingAbility($abilities, $applicable, $model, $authority)
     {
-        $abilities = $abilities->toBase()->pluck('identifier', 'id');
+        $abilities = $abilities->toBase()->pluck('identifier', 'identifier');
+
 
         if ($id = $this->getMatchedAbilityId($abilities, $applicable)) {
             return $id;
@@ -201,7 +202,7 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
             return $this->deserializeAbilities($abilities);
         }
 
-        $abilities = $this->getFreshAbilities($authority, $allowed, $abilityNames, $restrictionModel);
+        $abilities = $this->getFreshAbilities($authority, $allowed);
 
         $this->cache->forever($key, $this->serializeAbilities($abilities));
 

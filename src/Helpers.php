@@ -2,6 +2,8 @@
 
 namespace Silber\Bouncer;
 
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Silber\Bouncer\Database\Models;
 
 use App\User;
@@ -216,5 +218,19 @@ class Helpers
         }
 
         return new Collection($partitions);
+    }
+
+    public static function rawQuery($query)
+    {
+        $sql = (string)$query->toSql();
+        $sql = str_replace('%', '%%', $sql);
+        $bindings = Arr::flatten($query->getBindings());
+
+        array_walk($bindings, function (&$item) {
+            $item = DB::connection()->getPdo()->quote($item);
+        });
+        $sqlString = vsprintf(str_replace('?', '%s', $sql), $bindings);
+
+        return $sqlString;
     }
 }

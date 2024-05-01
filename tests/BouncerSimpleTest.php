@@ -366,12 +366,12 @@ class BouncerSimpleTest extends BaseTestCase
         $bouncer->allow($user)->to('enjoy-life');
 
         $this->assertEquals(
-            'Bouncer granted permission via ability #2',
+            'Bouncer granted permission via ability #enjoy-life',
             $bouncer->authorize('enjoy-life')->message()
         );
 
         $this->assertEquals(
-            'Bouncer granted permission via ability #1',
+            'Bouncer granted permission via ability #have-fun',
             $bouncer->authorize('have-fun')->message()
         );
     }

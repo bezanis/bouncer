@@ -104,51 +104,6 @@ class Abilities
     }
 
     /**
-     * Get a constraint for roles that are assigned to the given authority.
-     *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
-     * @return \Closure
-     */
-    protected static function getAuthorityRoleConstraint(Model $authority, $allowed, $abilities, $modelRestriction = null)
-    {
-        return function ($query) use ($authority, $allowed, $abilities, $modelRestriction) {
-
-            $assignedRolesTable  = Models::table('assigned_roles');
-            $rolesTable  = Models::table('roles');
-            $authorityTable  = $authority->getTable();
-
-            $query->from($authorityTable)
-                  ->join($assignedRolesTable, "{$authorityTable}.{$authority->getKeyName()}", '=', $assignedRolesTable.'.entity_id')
-                  ->whereColumn("{$assignedRolesTable}.role_id", "{$rolesTable}.id")
-                  ->where($assignedRolesTable.'.entity_type', $authority->getMorphClass())
-                  ->where("{$authorityTable}.{$authority->getKeyName()}", $authority->getKey());
-
-            if ($abilities) {
-                $query->byName($abilities);
-            }
-
-            if($modelRestriction){
-                if (is_string($modelRestriction)) {
-                    $query->whereNull('restricted_to_id');
-                    $query->where('restricted_to_type', $modelRestriction);
-                    $query->addSelect('restricted_to_type');
-                } else {
-                    $query->addSelect('restricted_to_id');
-                    $query->addSelect('restricted_to_type');
-                    $query->where('restricted_to_id', $modelRestriction->id);
-                    $query->where('restricted_to_type', get_class($modelRestriction));
-                }
-            } else if($abilities) {
-                $query->whereNull('restricted_to_id');
-                $query->whereNull('restricted_to_type');
-            }
-
-            Models::scope()->applyToModelQuery($query, $rolesTable);
-            Models::scope()->applyToRelationQuery($query, $assignedRolesTable);
-        };
-    }
-
-    /**
      * Get a constraint for abilities that have been granted to the given authority.
      *
      * @param  \Illuminate\Database\Eloquent\Model  $authority

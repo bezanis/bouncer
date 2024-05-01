@@ -25,8 +25,7 @@ class Clipboard extends BaseClipboard
         }
 
         $ability = $this->getAllowingAbility($authority, $ability, $model);
-
-        return $ability ? $ability->getKey() : null;
+        return $ability ? $ability->identifier : null;
     }
 
     /**
@@ -40,7 +39,7 @@ class Clipboard extends BaseClipboard
     protected function isForbidden(Model $authority, $ability, $model = null)
     {
         return $this->getHasAbilityQuery(
-            $authority, $ability, $model, $allowed = false
+            $authority, $ability, $model, false
         )->exists();
     }
 
@@ -57,7 +56,7 @@ class Clipboard extends BaseClipboard
     protected function getAllowingAbility(Model $authority, $ability, $model = null)
     {
         return $this->getHasAbilityQuery(
-            $authority, $ability, $model, $allowed = true
+            $authority, $ability, $model, true
         )->first();
     }
 

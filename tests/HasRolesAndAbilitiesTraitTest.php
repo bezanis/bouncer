@@ -2,6 +2,7 @@
 
 namespace Silber\Bouncer\Tests;
 
+use Silber\Bouncer\BouncerFacade as Bouncer;
 use Silber\Bouncer\Database\Models;
 
 class HasRolesAndAbilitiesTraitTest extends BaseTestCase
@@ -311,4 +312,32 @@ class HasRolesAndAbilitiesTraitTest extends BaseTestCase
 
         $this->assertEquals(2, $this->db()->table('assigned_roles')->count());
     }
+
+
+    /**
+     * @test
+     * @dataProvider bouncerProvider
+     */
+    function can_assign_roles_on_multiple_models($provider)
+    {
+        list($bouncer, $user) = $provider();
+
+        $onUser1 = User::create();
+        $onUser2 = User::create();
+
+        Bouncer::allow('user-admin')->to('edit-user', null, ['title' => 'Edit User', 'role_based' => 1]);
+        $bouncer->assign('user-admin')->to($user, $onUser1);
+        $bouncer->assign('user-admin')->to($user, $onUser2);
+
+        $this->assertTrue($user->can('edit-user', $onUser1));
+        $this->assertTrue($user->can('edit-user', $onUser2));
+
+        $this->assertTrue($bouncer->can('edit-user', $onUser1));
+        $this->assertTrue($bouncer->can('edit-user', $onUser2));
+        $this->assertTrue($user->can('edit-user', $onUser1));
+        $this->assertTrue($user->can('edit-user', $onUser2));
+        $this->assertTrue($user->can('edit-user', $onUser1));
+        $this->assertTrue($user->can('edit-user', $onUser2));
+    }
+
 }
