@@ -187,8 +187,6 @@ trait IsAbility
 
         if ($this->attributes['entity_type'] !== null) {
             $slug .= '-'.$this->attributes['entity_type'];
-        } else {
-            $slug .= '-*';
         }
 
         if ($this->attributes['entity_id'] !== null) {
