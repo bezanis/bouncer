@@ -173,6 +173,7 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
         $type = $model->getMorphClass();
 
         $abilities = [
+            "{$ability}",
             "{$ability}-{$type}",
             "{$ability}-*",
             "*-{$type}",
