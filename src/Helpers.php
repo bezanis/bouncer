@@ -2,12 +2,13 @@
 
 namespace Silber\Bouncer;
 
-use Silber\Bouncer\Database\Models;
-
 use App\User;
-use InvalidArgumentException;
-use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
+use Silber\Bouncer\Database\Models;
 
 class Helpers
 {
@@ -17,13 +18,13 @@ class Helpers
      * @param  string  $operator
      * @return void
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public static function ensureValidLogicalOperator($operator)
     {
         if (! in_array($operator, ['and', 'or'])) {
             throw new InvalidArgumentException(
-                "{$logicalOperator} is an invalid logical operator"
+                "{$operator} is an invalid logical operator"
             );
         }
     }
@@ -31,11 +32,10 @@ class Helpers
     /**
      * Extract the model instance and model keys from the given parameters.
      *
-     * @param  \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Collection|string  $model
-     * @param  array|null  $keys
+     * @param  Model|\Illuminate\Database\Eloquent\Collection|string  $model
      * @return array
      */
-    public static function extractModelAndKeys($model, array $keys = null)
+    public static function extractModelAndKeys($model, ?array $keys = null)
     {
         if (! is_null($keys)) {
             if (is_string($model)) {
@@ -88,9 +88,9 @@ class Helpers
         $groups = (new Collection($models))->groupBy(function ($model) {
             if (is_numeric($model)) {
                 return 'integers';
-            } else if (is_string($model)) {
+            } elseif (is_string($model)) {
                 return 'strings';
-            } else if ($model instanceof Model) {
+            } elseif ($model instanceof Model) {
                 return 'models';
             }
 
@@ -145,7 +145,6 @@ class Helpers
     /**
      * Determines whether the given model is set to soft delete.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return bool
      */
     public static function isSoftDeleting(Model $model)
@@ -180,9 +179,46 @@ class Helpers
     }
 
     /**
+     * Get the morph class for the given model or model class.
+     *
+     * @param  Model|string  $model
+     * @return string
+     */
+    public static function getMorphClass($model)
+    {
+        if ($model instanceof Model) {
+            return $model->getMorphClass();
+        }
+
+        if (is_string($model) && class_exists($model) && is_subclass_of($model, Model::class)) {
+            return (new $model)->getMorphClass();
+        }
+
+        return $model;
+    }
+
+    /**
+     * Get the morph classes for the given model, including its class name for legacy pivot records.
+     *
+     * @param  Model|string  $model
+     * @return array
+     */
+    public static function getMorphTypes($model)
+    {
+        $types = [static::getMorphClass($model)];
+
+        if ($model instanceof Model) {
+            $types[] = get_class($model);
+        } elseif (is_string($model) && class_exists($model) && is_subclass_of($model, Model::class)) {
+            $types[] = $model;
+        }
+
+        return array_unique($types);
+    }
+
+    /**
      * Map a list of authorities by their class name.
      *
-     * @param  array  $authorities
      * @return array
      */
     public static function mapAuthorityByClass(array $authorities)
@@ -204,8 +240,7 @@ class Helpers
      * Partition the given collection into two collection using the given callback.
      *
      * @param  iterable  $items
-     * @param  callable  $callback
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public static function partition($items, callable $callback)
     {
@@ -216,5 +251,19 @@ class Helpers
         }
 
         return new Collection($partitions);
+    }
+
+    public static function rawQuery($query)
+    {
+        $sql = (string) $query->toSql();
+        $sql = str_replace('%', '%%', $sql);
+        $bindings = Arr::flatten($query->getBindings());
+
+        array_walk($bindings, function (&$item) {
+            $item = DB::connection()->getPdo()->quote($item);
+        });
+        $sqlString = vsprintf(str_replace('?', '%s', $sql), $bindings);
+
+        return $sqlString;
     }
 }

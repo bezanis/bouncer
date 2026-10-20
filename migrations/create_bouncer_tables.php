@@ -1,12 +1,11 @@
 <?php
 
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 use Silber\Bouncer\Database\Models;
 
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Database\Migrations\Migration;
-
-class CreateBouncerTables extends Migration
+return new class extends Migration
 {
     /**
      * Run the migrations.
@@ -22,9 +21,12 @@ class CreateBouncerTables extends Migration
             $table->bigInteger('entity_id')->unsigned()->nullable();
             $table->string('entity_type')->nullable();
             $table->boolean('only_owned')->default(false);
+            $table->boolean('role_based')->default(false);
             $table->json('options')->nullable();
             $table->integer('scope')->nullable()->index();
             $table->timestamps();
+
+            $table->index(['entity_id', 'entity_type']);
         });
 
         Schema::create(Models::table('roles'), function (Blueprint $table) {
@@ -55,8 +57,8 @@ class CreateBouncerTables extends Migration
             );
 
             $table->foreign('role_id')
-                  ->references('id')->on(Models::table('roles'))
-                  ->onUpdate('cascade')->onDelete('cascade');
+                ->references('id')->on(Models::table('roles'))
+                ->onUpdate('cascade')->onDelete('cascade');
         });
 
         Schema::create(Models::table('permissions'), function (Blueprint $table) {
@@ -73,8 +75,8 @@ class CreateBouncerTables extends Migration
             );
 
             $table->foreign('ability_id')
-                  ->references('id')->on(Models::table('abilities'))
-                  ->onUpdate('cascade')->onDelete('cascade');
+                ->references('id')->on(Models::table('abilities'))
+                ->onUpdate('cascade')->onDelete('cascade');
         });
     }
 
@@ -90,4 +92,4 @@ class CreateBouncerTables extends Migration
         Schema::drop(Models::table('roles'));
         Schema::drop(Models::table('abilities'));
     }
-}
+};

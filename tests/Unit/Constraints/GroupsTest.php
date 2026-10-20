@@ -2,19 +2,17 @@
 
 namespace Silber\Bouncer\Tests\Unit\Constraints;
 
-use Silber\Bouncer\Tests\User;
-use Silber\Bouncer\Tests\Account;
-
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Silber\Bouncer\Constraints\Group;
 use Silber\Bouncer\Constraints\Constraint;
+use Silber\Bouncer\Constraints\Group;
+use Workbench\App\Models\Account;
+use Workbench\App\Models\User;
 
 class GroupsTest extends TestCase
 {
-    /**
-     * @test
-     */
-    function named_and_constructor()
+    #[Test]
+    public function named_and_constructor()
     {
         $group = Group::withAnd();
 
@@ -22,10 +20,8 @@ class GroupsTest extends TestCase
         $this->assertEquals('and', $group->logicalOperator());
     }
 
-    /**
-     * @test
-     */
-    function named_or_constructor()
+    #[Test]
+    public function named_or_constructor()
     {
         $group = Group::withOr();
 
@@ -33,10 +29,8 @@ class GroupsTest extends TestCase
         $this->assertEquals('or', $group->logicalOperator());
     }
 
-    /**
-     * @test
-     */
-    function group_of_constraints_only_passes_if_all_constraints_pass_the_check()
+    #[Test]
+    public function group_of_constraints_only_passes_if_all_constraints_pass_the_check()
     {
         $account = new Account([
             'name' => 'the-account',
@@ -57,10 +51,8 @@ class GroupsTest extends TestCase
         $this->assertFalse($groupB->check($account, new User));
     }
 
-    /**
-     * @test
-     */
-    function group_of_ors_passes_if_any_constraint_passes_the_check()
+    #[Test]
+    public function group_of_ors_passes_if_any_constraint_passes_the_check()
     {
         $account = new Account([
             'name' => 'the-account',
@@ -81,10 +73,8 @@ class GroupsTest extends TestCase
         $this->assertFalse($groupB->check($account, new User));
     }
 
-    /**
-     * @test
-     */
-    function group_can_be_serialized_and_deserialized()
+    #[Test]
+    public function group_can_be_serialized_and_deserialized()
     {
         $activeAccount = new Account([
             'name' => 'the-account',
@@ -106,10 +96,8 @@ class GroupsTest extends TestCase
         $this->assertFalse($group->check($inactiveAccount, new User));
     }
 
-    /**
-     * @test
-     */
-    function group_can_be_added_to()
+    #[Test]
+    public function group_can_be_added_to()
     {
         $activeAccount = new Account([
             'name' => 'account',
@@ -132,7 +120,6 @@ class GroupsTest extends TestCase
     /**
      * Convert the given object to JSON, then back.
      *
-     * @param  \Silber\Bouncer\Constraints\Group  $group
      * @return \Silber\Bouncer\Constraints\Group
      */
     protected function serializeAndDeserializeGroup(Group $group)

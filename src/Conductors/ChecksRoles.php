@@ -10,22 +10,19 @@ class ChecksRoles
     /**
      * The authority against which to check for roles.
      *
-     * @var \Illuminate\Database\Eloquent\Model
+     * @var Model
      */
     protected $authority;
 
     /**
      * The bouncer clipboard instance.
      *
-     * @var \Silber\Bouncer\Contracts\Clipboard
+     * @var Clipboard
      */
     protected $clipboard;
 
     /**
      * Constructor.
-     *
-     * @param \Illuminate\Database\Eloquent\Model  $authority
-     * @param \Silber\Bouncer\Contracts\Clipboard  $clipboard
      */
     public function __construct(Model $authority, Clipboard $clipboard)
     {
@@ -42,6 +39,19 @@ class ChecksRoles
     public function a(...$roles)
     {
         return $this->clipboard->checkRole($this->authority, $roles, 'or');
+    }
+
+    /**
+     * Check if the authority has the given roles on the given entities.
+     *
+     * @param  array|string  $roles
+     * @param  mixed  $entities
+     * @param  string  $boolean
+     * @return bool
+     */
+    public function on($roles, $entities, $boolean = 'or')
+    {
+        return $this->clipboard->checkRoleOn($this->authority, $roles, $entities, $boolean);
     }
 
     /**

@@ -2,33 +2,29 @@
 
 namespace Silber\Bouncer;
 
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+use InvalidArgumentException;
 use Silber\Bouncer\Database\Models;
 use Silber\Bouncer\Database\Queries\Abilities;
-
-use InvalidArgumentException;
-use Illuminate\Support\Collection;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Contracts\Auth\Access\Gate;
 
 abstract class BaseClipboard implements Contracts\Clipboard
 {
     /**
      * Determine if the given authority has the given ability.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @param  string  $ability
-     * @param  \Illuminate\Database\Eloquent\Model|string|null  $model
+     * @param  Model|string|null  $model
      * @return bool
      */
     public function check(Model $authority, $ability, $model = null)
     {
-        return (bool) $this->checkGetId($authority, $ability, $model);
+        return ! is_null($id = $this->checkGetId($authority, $ability, $model)) && $id !== false;
     }
 
     /**
      * Check if an authority has the given roles.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @param  array|string  $roles
      * @param  string  $boolean
      * @return bool
@@ -47,9 +43,59 @@ abstract class BaseClipboard implements Contracts\Clipboard
     }
 
     /**
+     * Check if an authority has the given roles.
+     *
+     * @param  array|string  $roles
+     * @param  string  $boolean
+     * @return bool
+     */
+    public function checkRoleOn(Model $authority, $roles, $entities, $boolean = 'or')
+    {
+        $entities = collect(Helpers::toArray($entities));
+
+        $assignedRoles = $authority->roles()->get([
+            'name', Models::role()->getQualifiedKeyName(),
+            'restricted_to_id',
+            'restricted_to_type',
+        ]);
+
+        $roles = (array) $roles;
+        $count = 0;
+
+        foreach ($entities as $entity) {
+            $entityId = $entity instanceof Model ? $entity->getKey() : null;
+            $morphTypes = Helpers::getMorphTypes($entity);
+
+            foreach ($roles as $role) {
+                $matched = $assignedRoles->contains(function ($assignedRole) use ($role, $entityId, $morphTypes) {
+                    $sameEntityId = is_null($entityId)
+                        ? is_null($assignedRole->restricted_to_id)
+                        : (! is_null($assignedRole->restricted_to_id) && (string) $assignedRole->restricted_to_id === (string) $entityId);
+
+                    return $sameEntityId
+                        && in_array($assignedRole->restricted_to_type, $morphTypes, true)
+                        && $role == $assignedRole->name;
+                });
+
+                if ($matched) {
+                    $count++;
+                }
+            }
+        }
+
+        if ($boolean == 'or') {
+            return $count > 0;
+        } elseif ($boolean === 'not') {
+            return $count === 0;
+        }
+
+        return $count == (count($roles) * $entities->count());
+    }
+
+    /**
      * Count the authority's roles matching the given roles.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
+     * @param  Model  $authority
      * @param  array|string  $roles
      * @return int
      */
@@ -74,13 +120,12 @@ abstract class BaseClipboard implements Contracts\Clipboard
     /**
      * Get the given authority's roles' IDs and names.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @return array
      */
     public function getRolesLookup(Model $authority)
     {
         $roles = $authority->roles()->get([
-            'name', Models::role()->getQualifiedKeyName()
+            'name', Models::role()->getQualifiedKeyName(),
         ])->pluck('name', Models::role()->getKeyName());
 
         return ['ids' => $roles, 'names' => $roles->flip()];
@@ -89,8 +134,7 @@ abstract class BaseClipboard implements Contracts\Clipboard
     /**
      * Get the given authority's roles' names.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function getRoles(Model $authority)
     {
@@ -100,19 +144,17 @@ abstract class BaseClipboard implements Contracts\Clipboard
     /**
      * Get a list of the authority's abilities.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @param  bool  $allowed
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getAbilities(Model $authority, $allowed = true)
+    public function getAbilities(Model $authority, $allowed = true, $abilities = null, $restrictionModel = null)
     {
-        return Abilities::forAuthority($authority, $allowed)->get();
+        return Abilities::forAuthority($authority, $allowed, $abilities, $restrictionModel)->get();
     }
 
     /**
      * Get a list of the authority's forbidden abilities.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @return \Illuminate\Database\Eloquent\Collection
      */
     public function getForbiddenAbilities(Model $authority)

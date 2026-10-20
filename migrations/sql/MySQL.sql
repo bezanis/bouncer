@@ -1,10 +1,11 @@
 create table `abilities` (
-    `id` int unsigned not null auto_increment primary key,
+    `id` bigint unsigned not null auto_increment primary key,
     `name` varchar(255) not null,
     `title` varchar(255) null,
-    `entity_id` int unsigned null,
+    `entity_id` bigint unsigned null,
     `entity_type` varchar(255) null,
     `only_owned` tinyint(1) not null default '0',
+    `role_based` tinyint(1) not null default '0',
     `options` json null,
     `scope` int null,
     `created_at` timestamp null,
@@ -14,11 +15,13 @@ create table `abilities` (
 alter table `abilities`
     add index `abilities_scope_index`(`scope`);
 
+alter table `abilities`
+    add index `abilities_entity_id_entity_type_index`(`entity_id`, `entity_type`);
+
 create table `roles` (
-    `id` int unsigned not null auto_increment primary key,
+    `id` bigint unsigned not null auto_increment primary key,
     `name` varchar(255) not null,
     `title` varchar(255) null,
-    `level` int unsigned null,
     `scope` int null,
     `created_at` timestamp null,
     `updated_at` timestamp null
@@ -31,11 +34,11 @@ alter table `roles`
     add index `roles_scope_index`(`scope`);
 
 create table `assigned_roles` (
-    `id` int unsigned not null auto_increment primary key,
-    `role_id` int unsigned not null,
-    `entity_id` int unsigned not null,
+    `id` bigint unsigned not null auto_increment primary key,
+    `role_id` bigint unsigned not null,
+    `entity_id` bigint unsigned not null,
     `entity_type` varchar(255) not null,
-    `restricted_to_id` int unsigned null,
+    `restricted_to_id` bigint unsigned null,
     `restricted_to_type` varchar(255) null,
     `scope` int null
 ) default character set utf8mb4 collate utf8mb4_unicode_ci;
@@ -57,9 +60,9 @@ alter table `assigned_roles`
     add index `assigned_roles_scope_index`(`scope`);
 
 create table `permissions` (
-    `id` int unsigned not null auto_increment primary key,
-    `ability_id` int unsigned not null,
-    `entity_id` int unsigned null,
+    `id` bigint unsigned not null auto_increment primary key,
+    `ability_id` bigint unsigned not null,
+    `entity_id` bigint unsigned null,
     `entity_type` varchar(255) null,
     `forbidden` tinyint(1) not null default '0',
     `scope` int null

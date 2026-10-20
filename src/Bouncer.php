@@ -2,37 +2,44 @@
 
 namespace Silber\Bouncer;
 
-use RuntimeException;
-use Illuminate\Cache\NullStore;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Container\Container;
-use Illuminate\Contracts\Cache\Store;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
-
+use Illuminate\Contracts\Cache\Store;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+use RuntimeException;
+use Silber\Bouncer\Conductors\AssignsRoles;
+use Silber\Bouncer\Conductors\ChecksRoles;
+use Silber\Bouncer\Conductors\GivesAbilities;
+use Silber\Bouncer\Conductors\RemovesAbilities;
+use Silber\Bouncer\Conductors\RemovesRoles;
+use Silber\Bouncer\Conductors\SyncsRolesAndAbilities;
 use Silber\Bouncer\Contracts\Scope;
+use Silber\Bouncer\Database\Ability;
 use Silber\Bouncer\Database\Models;
+use Silber\Bouncer\Database\Role;
 
 class Bouncer
 {
     /**
      * The bouncer guard instance.
      *
-     * @var \Silber\Bouncer\Guard
+     * @var Guard
      */
     protected $guard;
 
     /**
      * The access gate instance.
      *
-     * @var \Illuminate\Contracts\Auth\Access\Gate|null
+     * @var Gate|null
      */
     protected $gate;
 
     /**
      * Constructor.
-     *
-     * @param \Silber\Bouncer\Guard  $guard
      */
     public function __construct(Guard $guard)
     {
@@ -54,7 +61,7 @@ class Bouncer
      * Create a bouncer factory instance.
      *
      * @param  mixed  $user
-     * @return \Silber\Bouncer\Factory
+     * @return Factory
      */
     public static function make($user = null)
     {
@@ -64,50 +71,50 @@ class Bouncer
     /**
      * Start a chain, to allow the given authority an ability.
      *
-     * @param  \Illuminate\Database\Eloquent\Model|string  $authority
-     * @return \Silber\Bouncer\Conductors\GivesAbilities
+     * @param  Model|string  $authority
+     * @return GivesAbilities
      */
     public function allow($authority)
     {
-        return new Conductors\GivesAbilities($authority);
+        return new GivesAbilities($authority);
     }
 
     /**
      * Start a chain, to allow everyone an ability.
      *
-     * @return \Silber\Bouncer\Conductors\GivesAbilities
+     * @return GivesAbilities
      */
     public function allowEveryone()
     {
-        return new Conductors\GivesAbilities();
+        return new GivesAbilities;
     }
 
     /**
      * Start a chain, to disallow the given authority an ability.
      *
-     * @param  \Illuminate\Database\Eloquent\Model|string  $authority
-     * @return \Silber\Bouncer\Conductors\RemovesAbilities
+     * @param  Model|string  $authority
+     * @return RemovesAbilities
      */
     public function disallow($authority)
     {
-        return new Conductors\RemovesAbilities($authority);
+        return new RemovesAbilities($authority);
     }
 
     /**
      * Start a chain, to disallow everyone the an ability.
      *
-     * @return \Silber\Bouncer\Conductors\RemovesAbilities
+     * @return RemovesAbilities
      */
     public function disallowEveryone()
     {
-        return new Conductors\RemovesAbilities();
+        return new RemovesAbilities;
     }
 
     /**
      * Start a chain, to forbid the given authority an ability.
      *
-     * @param  \Illuminate\Database\Eloquent\Model|string  $authority
-     * @return \Silber\Bouncer\Conductors\GivesAbilities
+     * @param  Model|string  $authority
+     * @return GivesAbilities
      */
     public function forbid($authority)
     {
@@ -117,18 +124,18 @@ class Bouncer
     /**
      * Start a chain, to forbid everyone an ability.
      *
-     * @return \Silber\Bouncer\Conductors\GivesAbilities
+     * @return GivesAbilities
      */
     public function forbidEveryone()
     {
-        return new Conductors\ForbidsAbilities();
+        return new Conductors\ForbidsAbilities;
     }
 
     /**
      * Start a chain, to unforbid the given authority an ability.
      *
-     * @param  \Illuminate\Database\Eloquent\Model|string  $authority
-     * @return \Silber\Bouncer\Conductors\RemovesAbilities
+     * @param  Model|string  $authority
+     * @return RemovesAbilities
      */
     public function unforbid($authority)
     {
@@ -138,61 +145,60 @@ class Bouncer
     /**
      * Start a chain, to unforbid an ability from everyone.
      *
-     * @return \Silber\Bouncer\Conductors\RemovesAbilities
+     * @return RemovesAbilities
      */
     public function unforbidEveryone()
     {
-        return new Conductors\UnforbidsAbilities();
+        return new Conductors\UnforbidsAbilities;
     }
 
     /**
      * Start a chain, to assign the given role to a model.
      *
-     * @param  \Silber\Bouncer\Database\Role|\Illuminate\Support\Collection|string  $roles
-     * @return \Silber\Bouncer\Conductors\AssignsRoles
+     * @param  Role|Collection|string  $roles
+     * @return AssignsRoles
      */
     public function assign($roles)
     {
-        return new Conductors\AssignsRoles($roles);
+        return new AssignsRoles($roles);
     }
 
     /**
      * Start a chain, to retract the given role from a model.
      *
-     * @param  \Illuminate\Support\Collection|\Silber\Bouncer\Database\Role|string  $roles
-     * @return \Silber\Bouncer\Conductors\RemovesRoles
+     * @param  Collection|Role|string  $roles
+     * @return RemovesRoles
      */
     public function retract($roles)
     {
-        return new Conductors\RemovesRoles($roles);
+        return new RemovesRoles($roles);
     }
 
     /**
      * Start a chain, to sync roles/abilities for the given authority.
      *
-     * @param  \Illuminate\Database\Eloquent\Model|string  $authority
-     * @return \Silber\Bouncer\Conductors\SyncsRolesAndAbilities
+     * @param  Model|string  $authority
+     * @return SyncsRolesAndAbilities
      */
     public function sync($authority)
     {
-        return new Conductors\SyncsRolesAndAbilities($authority);
+        return new SyncsRolesAndAbilities($authority);
     }
 
     /**
      * Start a chain, to check if the given authority has a certain role.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
-     * @return \Silber\Bouncer\Conductors\ChecksRoles
+     * @return ChecksRoles
      */
     public function is(Model $authority)
     {
-        return new Conductors\ChecksRoles($authority, $this->getClipboard());
+        return new ChecksRoles($authority, $this->getClipboard());
     }
 
     /**
      * Get the clipboard instance.
      *
-     * @return \Silber\Bouncer\Contracts\Clipboard
+     * @return Contracts\Clipboard
      */
     public function getClipboard()
     {
@@ -204,7 +210,7 @@ class Bouncer
      *
      * Will also register the given clipboard with the container.
      *
-     * @param  \Silber\Bouncer\Contracts\Clipboard
+     * @param  Contracts\Clipboard
      * @return $this
      */
     public function setClipboard(Contracts\Clipboard $clipboard)
@@ -231,10 +237,9 @@ class Bouncer
     /**
      * Use a cached clipboard with the given cache instance.
      *
-     * @param  \Illuminate\Contracts\Cache\Store  $cache
      * @return $this
      */
-    public function cache(Store $cache = null)
+    public function cache(?Store $cache = null)
     {
         $cache = $cache ?: $this->resolve(CacheRepository::class)->getStore();
 
@@ -260,10 +265,9 @@ class Bouncer
     /**
      * Clear the cache.
      *
-     * @param  null|\Illuminate\Database\Eloquent\Model  $authority
      * @return $this
      */
-    public function refresh(Model $authority = null)
+    public function refresh(?Model $authority = null)
     {
         if ($this->usesCachedClipboard()) {
             $this->getClipboard()->refresh($authority);
@@ -275,7 +279,6 @@ class Bouncer
     /**
      * Clear the cache for the given authority.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @return $this
      */
     public function refreshFor(Model $authority)
@@ -290,7 +293,6 @@ class Bouncer
     /**
      * Set the access gate instance.
      *
-     * @param \Illuminate\Contracts\Auth\Access\Gate  $gate
      * @return $this
      */
     public function setGate(Gate $gate)
@@ -303,7 +305,7 @@ class Bouncer
     /**
      * Get the gate instance.
      *
-     * @return \Illuminate\Contracts\Auth\Access\Gate|null
+     * @return Gate|null
      */
     public function getGate()
     {
@@ -313,9 +315,9 @@ class Bouncer
     /**
      * Get the gate instance. Throw if not set.
      *
-     * @return \Illuminate\Contracts\Auth\Access\Gate
+     * @return Gate
      *
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     public function gate()
     {
@@ -355,9 +357,9 @@ class Bouncer
      *
      * @param  string  $ability
      * @param  array|mixed  $arguments
-     * @return \Illuminate\Auth\Access\Response
+     * @return Response
      *
-     * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @throws AuthorizationException
      */
     public function authorize($ability, $arguments = [])
     {
@@ -374,6 +376,18 @@ class Bouncer
     public function can($ability, $arguments = [])
     {
         return $this->gate()->allows($ability, $arguments);
+    }
+
+    /**
+     * Determine if the given ability is allowed.
+     *
+     * @param  string  $ability
+     * @param  array|mixed  $arguments
+     * @return bool
+     */
+    public function canWithOptionalArgs($ability, $arguments = [])
+    {
+        return $this->can($ability) || $this->canAny($ability, $arguments);
     }
 
     /**
@@ -401,11 +415,24 @@ class Bouncer
     }
 
     /**
+     * Determine if the given ability is denied.
+     *
+     * @param  string  $ability
+     * @param  array|mixed  $arguments
+     * @return bool
+     */
+    public function cannotWithOptionalArgs($ability, $arguments = [])
+    {
+        return $this->cannot($ability, $arguments) && $this->cannot($ability);
+    }
+
+    /**
      * Determine if the given ability is allowed.
      *
      * Alias for the "can" method.
      *
      * @deprecated
+     *
      * @param  string  $ability
      * @param  array|mixed  $arguments
      * @return bool
@@ -421,6 +448,7 @@ class Bouncer
      * Alias for the "cannot" method.
      *
      * @deprecated
+     *
      * @param  string  $ability
      * @param  array|mixed  $arguments
      * @return bool
@@ -433,8 +461,7 @@ class Bouncer
     /**
      * Get an instance of the role model.
      *
-     * @param  array  $attributes
-     * @return \Silber\Bouncer\Database\Role
+     * @return Role
      */
     public function role(array $attributes = [])
     {
@@ -444,8 +471,7 @@ class Bouncer
     /**
      * Get an instance of the ability model.
      *
-     * @param  array  $attributes
-     * @return \Silber\Bouncer\Database\Ability
+     * @return Ability
      */
     public function ability(array $attributes = [])
     {
@@ -521,7 +547,6 @@ class Bouncer
     /**
      * Set custom table names.
      *
-     * @param  array  $map
      * @return $this
      */
     public function tables(array $map)
@@ -534,10 +559,9 @@ class Bouncer
     /**
      * Get the model scoping instance.
      *
-     * @param  \Silber\Bouncer\Contracts\Scope|null  $scope
      * @return mixed
      */
-    public function scope(Scope $scope = null)
+    public function scope(?Scope $scope = null)
     {
         return Models::scope($scope);
     }
@@ -546,7 +570,6 @@ class Bouncer
      * Resolve the given type from the container.
      *
      * @param  string  $abstract
-     * @param  array  $parameters
      * @return mixed
      */
     protected function resolve($abstract, array $parameters = [])

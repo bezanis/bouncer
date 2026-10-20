@@ -2,13 +2,12 @@
 
 namespace Silber\Bouncer;
 
-use Silber\Bouncer\Database\Models;
-
 use Illuminate\Cache\TaggedCache;
 use Illuminate\Contracts\Cache\Store;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection as BaseCollection;
+use Silber\Bouncer\Database\Models;
 
 class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
 {
@@ -22,14 +21,12 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * The cache store.
      *
-     * @var \Illuminate\Contracts\Cache\Store
+     * @var Store
      */
     protected $cache;
 
     /**
      * Constructor.
-     *
-     * @param \Illuminate\Contracts\Cache\Store  $cache
      */
     public function __construct(Store $cache)
     {
@@ -39,7 +36,6 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * Set the cache instance.
      *
-     * @param  \Illuminate\Contracts\Cache\Store  $cache
      * @return $this
      */
     public function setCache(Store $cache)
@@ -56,7 +52,7 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * Get the cache instance.
      *
-     * @return \Illuminate\Contracts\Cache\Store
+     * @return Store
      */
     public function getCache()
     {
@@ -64,12 +60,11 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     }
 
     /**
-     * Determine if the given authority has the given ability, and return the ability ID.
+     * Determine if the given authority has the given ability, and return its identifier.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @param  string  $ability
-     * @param  \Illuminate\Database\Eloquent\Model|string|null  $model
-     * @return int|bool|null
+     * @param  Model|string|null  $model
+     * @return string|bool|null
      */
     public function checkGetId(Model $authority, $ability, $model = null)
     {
@@ -79,32 +74,40 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
         // If so, we'll return false right away, so as to not pass the check. Then,
         // we'll check if any of them have been allowed & return the matched ID.
         $forbiddenId = $this->findMatchingAbility(
-            $this->getForbiddenAbilities($authority), $applicable, $model, $authority
+            $this->getAbilities($authority, false), $applicable, $model, $authority
         );
 
-        if ($forbiddenId) {
+        if (! is_null($forbiddenId)) {
             return false;
         }
 
         return $this->findMatchingAbility(
-            $this->getAbilities($authority), $applicable, $model, $authority
+            $this->getAbilities($authority, true), $applicable, $model, $authority
         );
     }
 
     /**
      * Determine if any of the abilities can be matched against the provided applicable ones.
      *
-     * @param  \Illuminate\Support\Collection  $abilities
-     * @param  \Illuminate\Support\Collection  $applicable
-     * @param  \Illuminate\Database\Eloquent\Model  $model
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
-     * @return int|null
+     * @param  BaseCollection  $abilities
+     * @param  BaseCollection  $applicable
+     * @param  Model  $model
+     * @param  Model  $authority
+     * @return string|null
      */
     protected function findMatchingAbility($abilities, $applicable, $model, $authority)
     {
-        $abilities = $abilities->toBase()->pluck('identifier', 'id');
+        $abilities = $abilities->toBase()->mapWithKeys(function ($ability) use ($model) {
+            $identifier = $ability->identifier;
 
-        if ($id = $this->getMatchedAbilityId($abilities, $applicable)) {
+            if (! is_null($model) && $model !== '*' && $ability->role_based && is_null($ability->entity_type)) {
+                $identifier = strtolower($ability->name).'-*'.($ability->only_owned ? '-owned' : '');
+            }
+
+            return [$ability->identifier => $identifier];
+        });
+
+        if (! is_null($id = $this->getMatchedAbilityId($abilities, $applicable))) {
             return $id;
         }
 
@@ -119,17 +122,17 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     }
 
     /**
-     * Get the ID of the ability that matches one of the applicable abilities.
+     * Get the identifier of the ability that matches one of the applicable abilities.
      *
-     * @param  \Illuminate\Support\Collection  $abilityMap
-     * @param  \Illuminate\Support\Collection  $applicable
-     * @return int|null
+     * @param  BaseCollection  $abilityMap
+     * @param  BaseCollection  $applicable
+     * @return string|null
      */
     protected function getMatchedAbilityId($abilityMap, $applicable)
     {
         foreach ($abilityMap as $id => $identifier) {
             if ($applicable->contains($identifier)) {
-                return $id;
+                return (string) $id;
             }
         }
     }
@@ -138,8 +141,8 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
      * Compile a list of ability identifiers that match the provided parameters.
      *
      * @param  string  $ability
-     * @param  \Illuminate\Database\Eloquent\Model|string|null  $model
-     * @return \Illuminate\Support\Collection
+     * @param  Model|string|null  $model
+     * @return BaseCollection
      */
     protected function compileAbilityIdentifiers($ability, $model)
     {
@@ -158,13 +161,13 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
      * Compile a list of ability identifiers that match the given model.
      *
      * @param  string  $ability
-     * @param  \Illuminate\Database\Eloquent\Model|string  $model
+     * @param  Model|string  $model
      * @return array
      */
     protected function compileModelAbilityIdentifiers($ability, $model)
     {
         if ($model === '*') {
-            return ["{$ability}-*", "*-*"];
+            return ["{$ability}-*", '*-*'];
         }
 
         $model = $model instanceof Model ? $model : new $model;
@@ -175,7 +178,7 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
             "{$ability}-{$type}",
             "{$ability}-*",
             "*-{$type}",
-            "*-*",
+            '*-*',
         ];
 
         if ($model->exists) {
@@ -189,12 +192,15 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * Get the given authority's abilities.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @param  bool  $allowed
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return Collection
      */
-    public function getAbilities(Model $authority, $allowed = true)
+    public function getAbilities(Model $authority, $allowed = true, $abilityNames = null, $restrictionModel = null)
     {
+        if (! is_null($abilityNames) || ! is_null($restrictionModel)) {
+            return parent::getAbilities($authority, $allowed, $abilityNames, $restrictionModel);
+        }
+
         $key = $this->getCacheKey($authority, 'abilities', $allowed);
 
         if (is_array($abilities = $this->cache->get($key))) {
@@ -211,19 +217,17 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * Get a fresh copy of the given authority's abilities.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @param  bool  $allowed
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return Collection
      */
-    public function getFreshAbilities(Model $authority, $allowed)
+    public function getFreshAbilities(Model $authority, $allowed, $abilityNames = null, $restrictionModel = null)
     {
-        return parent::getAbilities($authority, $allowed);
+        return parent::getAbilities($authority, $allowed, $abilityNames, $restrictionModel);
     }
 
     /**
      * Get the given authority's roles' IDs and names.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @return array
      */
     public function getRolesLookup(Model $authority)
@@ -239,7 +243,6 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
      * Get an item from the cache, or store the default value forever.
      *
      * @param  string  $key
-     * @param  callable  $callback
      * @return mixed
      */
     protected function sear($key, callable $callback)
@@ -254,12 +257,12 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * Clear the cache.
      *
-     * @param  null|\Illuminate\Database\Eloquent\Model  $authority
+     * @param  null|Model  $authority
      * @return $this
      */
     public function refresh($authority = null)
     {
-        if ( ! is_null($authority)) {
+        if (! is_null($authority)) {
             return $this->refreshFor($authority);
         }
 
@@ -275,7 +278,6 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * Clear the cache for the given authority.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @return $this
      */
     public function refreshFor(Model $authority)
@@ -306,7 +308,6 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * Get the cache key for the given model's cache type.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $model
      * @param  string  $type
      * @param  bool  $allowed
      * @return string
@@ -335,8 +336,7 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * Deserialize an array of abilities into a collection of models.
      *
-     * @param  array  $abilities
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return Collection
      */
     protected function deserializeAbilities(array $abilities)
     {
@@ -346,7 +346,6 @@ class CachedClipboard extends BaseClipboard implements Contracts\CachedClipboard
     /**
      * Serialize a collection of ability models into a plain array.
      *
-     * @param  \Illuminate\Database\Eloquent\Collection  $abilities
      * @return array
      */
     protected function serializeAbilities(Collection $abilities)

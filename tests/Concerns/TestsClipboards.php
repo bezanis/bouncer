@@ -2,11 +2,10 @@
 
 namespace Silber\Bouncer\Tests\Concerns;
 
-use Silber\Bouncer\Clipboard;
-use Silber\Bouncer\Tests\User;
-use Silber\Bouncer\CachedClipboard;
-
 use Illuminate\Cache\NullStore;
+use Silber\Bouncer\CachedClipboard;
+use Silber\Bouncer\Clipboard;
+use Workbench\App\Models\User;
 
 trait TestsClipboards
 {
@@ -15,22 +14,22 @@ trait TestsClipboards
      *
      * @return array
      */
-    function bouncerProvider()
+    public static function bouncerProvider()
     {
         return [
             'basic clipboard' => [
                 function ($authoriesCount = 1, $authority = User::class) {
-                    return $this->provideBouncer(
+                    return static::provideBouncer(
                         new Clipboard, $authoriesCount, $authority
                     );
-                }
+                },
             ],
             'null cached clipboard' => [
                 function ($authoriesCount = 1, $authority = User::class) {
-                    return $this->provideBouncer(
+                    return static::provideBouncer(
                         new CachedClipboard(new NullStore), $authoriesCount, $authority
                     );
-                }
+                },
             ],
         ];
     }
@@ -38,20 +37,19 @@ trait TestsClipboards
     /**
      * Provide the bouncer instance (with its user) using the given clipboard.
      *
-     * @param  \Silber\Bouncer\Clipboard  $clipboard
+     * @param  Clipboard  $clipboard
      * @param  int  $authoriesCount
      * @param  string  $authority
      * @return array
      */
-    protected function provideBouncer($clipboard, $authoriesCount, $authority)
+    protected static function provideBouncer($clipboard, $authoriesCount, $authority)
     {
-        $authorities = array_map(function () use ($authority) {
-            return $authority::create();
-        }, range(0, $authoriesCount));
+        $authorities = array_map(
+            fn () => $authority::create(),
+            range(0, $authoriesCount),
+        );
 
-        $this->clipboard = $clipboard;
-
-        $bouncer = $this->bouncer($authorities[0]);
+        $bouncer = static::bouncer($authorities[0])->setClipboard($clipboard);
 
         return array_merge([$bouncer], $authorities);
     }

@@ -2,17 +2,20 @@
 
 namespace Silber\Bouncer\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use Workbench\App\Models\Account;
+use Workbench\App\Models\User;
+
 class MultipleAbilitiesTest extends BaseTestCase
 {
     use Concerns\TestsClipboards;
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function allowing_multiple_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function allowing_multiple_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['edit', 'delete']);
 
@@ -20,13 +23,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('delete'));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function allowing_multiple_model_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function allowing_multiple_model_abilities($provider)
     {
-        list($bouncer, $user1, $user2) = $provider(2);
+        [$bouncer, $user1, $user2] = $provider(2);
 
         $bouncer->allow($user1)->to(['edit', 'delete'], $user1);
 
@@ -36,13 +37,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('delete', $user2));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function allowing_multiple_blanket_model_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function allowing_multiple_blanket_model_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['edit', 'delete'], User::class);
 
@@ -50,13 +49,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('delete', User::class));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function allowing_an_ability_on_multiple_models($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function allowing_an_ability_on_multiple_models($provider)
     {
-        list($bouncer, $user1, $user2) = $provider(2);
+        [$bouncer, $user1, $user2] = $provider(2);
 
         $bouncer->allow($user1)->to('delete', [Account::class, $user1]);
 
@@ -66,13 +63,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('delete', User::class));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function allowing_multiple_abilities_on_multiple_models($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function allowing_multiple_abilities_on_multiple_models($provider)
     {
-        list($bouncer, $user1, $user2) = $provider(2);
+        [$bouncer, $user1, $user2] = $provider(2);
 
         $bouncer->allow($user1)->to(['update', 'delete'], [Account::class, $user1]);
 
@@ -83,21 +78,19 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('update', User::class));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function allowing_multiple_abilities_via_a_map($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function allowing_multiple_abilities_via_a_map($provider)
     {
-        list($bouncer, $user1, $user2) = $provider(2);
+        [$bouncer, $user1, $user2] = $provider(2);
 
         $account1 = Account::create();
         $account2 = Account::create();
 
         $bouncer->allow($user1)->to([
-            'edit'   => User::class,
+            'edit' => User::class,
             'delete' => $user1,
-            'view'   => Account::class,
+            'view' => Account::class,
             'update' => $account1,
             'access-dashboard',
         ]);
@@ -115,13 +108,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('access-dashboard'));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function disallowing_multiple_abilties($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function disallowing_multiple_abilties($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['edit', 'delete']);
         $bouncer->disallow($user)->to(['edit', 'delete']);
@@ -130,13 +121,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('delete'));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function disallowing_multiple_model_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function disallowing_multiple_model_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['view', 'edit', 'delete'], $user);
         $bouncer->disallow($user)->to(['edit', 'delete'], $user);
@@ -146,13 +135,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('delete', $user));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function disallowing_multiple_blanket_model_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function disallowing_multiple_blanket_model_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['edit', 'delete'], User::class);
         $bouncer->disallow($user)->to(['edit', 'delete'], User::class);
@@ -161,26 +148,24 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('delete', User::class));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function disallowing_multiple_abilities_via_a_map($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function disallowing_multiple_abilities_via_a_map($provider)
     {
-        list($bouncer, $user1, $user2) = $provider(2);
+        [$bouncer, $user1, $user2] = $provider(2);
 
         $account1 = Account::create();
         $account2 = Account::create();
 
         $bouncer->allow($user1)->to([
-            'edit'   => User::class,
+            'edit' => User::class,
             'delete' => $user1,
-            'view'   => Account::class,
+            'view' => Account::class,
             'update' => $account1,
         ]);
 
         $bouncer->disallow($user1)->to([
-            'edit'   => User::class,
+            'edit' => User::class,
             'update' => $account1,
         ]);
 
@@ -190,13 +175,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('update', $account1));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function forbidding_multiple_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function forbidding_multiple_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['edit', 'delete']);
         $bouncer->forbid($user)->to(['edit', 'delete']);
@@ -205,13 +188,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('delete'));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function forbidding_multiple_model_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function forbidding_multiple_model_abilities($provider)
     {
-        list($bouncer, $user1, $user2) = $provider(2);
+        [$bouncer, $user1, $user2] = $provider(2);
 
         $bouncer->allow($user1)->to(['view', 'edit', 'delete']);
         $bouncer->allow($user1)->to(['view', 'edit', 'delete'], $user1);
@@ -228,13 +209,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('delete', $user2));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function forbidding_multiple_blanket_model_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function forbidding_multiple_blanket_model_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['edit', 'delete']);
         $bouncer->allow($user)->to(['edit', 'delete'], Account::class);
@@ -252,26 +231,24 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('delete', User::class));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function forbidding_multiple_abilities_via_a_map($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function forbidding_multiple_abilities_via_a_map($provider)
     {
-        list($bouncer, $user1, $user2) = $provider(2);
+        [$bouncer, $user1, $user2] = $provider(2);
 
         $account1 = Account::create();
         $account2 = Account::create();
 
         $bouncer->allow($user1)->to([
-            'edit'   => User::class,
+            'edit' => User::class,
             'delete' => $user1,
-            'view'   => Account::class,
+            'view' => Account::class,
             'update' => $account1,
         ]);
 
         $bouncer->forbid($user1)->to([
-            'edit'   => User::class,
+            'edit' => User::class,
             'update' => $account1,
         ]);
 
@@ -281,13 +258,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('update', $account1));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function unforbidding_multiple_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function unforbidding_multiple_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['view', 'edit', 'delete']);
         $bouncer->forbid($user)->to(['view', 'edit', 'delete']);
@@ -298,13 +273,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('delete'));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function unforbidding_multiple_model_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function unforbidding_multiple_model_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['view', 'edit', 'delete'], $user);
         $bouncer->forbid($user)->to(['view', 'edit', 'delete'], $user);
@@ -315,13 +288,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('delete', $user));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function unforbidding_multiple_blanket_model_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function unforbidding_multiple_blanket_model_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->to(['view', 'edit', 'delete'], User::class);
         $bouncer->forbid($user)->to(['view', 'edit', 'delete'], User::class);
@@ -332,33 +303,31 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('delete', User::class));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function unforbidding_multiple_abilities_via_a_map($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function unforbidding_multiple_abilities_via_a_map($provider)
     {
-        list($bouncer, $user1, $user2) = $provider(2);
+        [$bouncer, $user1, $user2] = $provider(2);
 
         $account1 = Account::create();
         $account2 = Account::create();
 
         $bouncer->allow($user1)->to([
-            'edit'   => User::class,
+            'edit' => User::class,
             'delete' => $user1,
-            'view'   => Account::class,
+            'view' => Account::class,
             'update' => $account1,
         ]);
 
         $bouncer->forbid($user1)->to([
-            'edit'   => User::class,
+            'edit' => User::class,
             'delete' => $user1,
-            'view'   => Account::class,
+            'view' => Account::class,
             'update' => $account1,
         ]);
 
         $bouncer->unforbid($user1)->to([
-            'edit'   => User::class,
+            'edit' => User::class,
             'update' => $account1,
         ]);
 
@@ -368,13 +337,11 @@ class MultipleAbilitiesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('update', $account1));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function passthru_can_any_check($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function passthru_can_any_check($provider)
     {
-        list($bouncer, $user1) = $provider();
+        [$bouncer, $user1] = $provider();
 
         $user1->allow('create', User::class);
 

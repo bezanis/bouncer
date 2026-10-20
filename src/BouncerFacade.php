@@ -31,8 +31,10 @@ use Illuminate\Support\Facades\Facade;
  * @method static self define(string $ability, callable|string $callback)
  * @method static \Illuminate\Auth\Access\Response authorize(string $ability, array|mixed $arguments = [])
  * @method static bool can(string $ability, array|mixed $arguments = [])
+ * @method static bool canWithOptionalArgs(string $ability, array|mixed $arguments = [])
  * @method static bool canAny(array $abilities, array|mixed $arguments = [])
  * @method static bool cannot(string $ability, array|mixed $arguments = [])
+ * @method static bool cannotWithOptionalArgs(string $ability, array|mixed $arguments = [])
  * @method static bool allows(string $ability, array|mixed $arguments = [])
  * @method static bool denies(string $ability, array|mixed $arguments = [])
  * @method static \Silber\Bouncer\Database\Role role(array $attributes = [])
@@ -45,7 +47,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static self tables(array $map)
  * @method static mixed scope(null|\Silber\Bouncer\Contracts\Scope $scope = null)
  *
- * @see \Silber\Bouncer\Bouncer
+ * @see Bouncer
  */
 class BouncerFacade extends Facade
 {

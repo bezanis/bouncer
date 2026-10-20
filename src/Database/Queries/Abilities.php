@@ -2,34 +2,75 @@
 
 namespace Silber\Bouncer\Database\Queries;
 
-use Silber\Bouncer\Database\Models;
-
-use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Silber\Bouncer\Database\Models;
 
 class Abilities
 {
     /**
      * Get a query for the authority's abilities.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @param  bool  $allowed
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
-    public static function forAuthority(Model $authority, $allowed = true)
+    public static function forAuthority(Model $authority, $allowed = true, $abilities = null, $modelRestriction = null)
     {
-        return Models::ability()->where(function ($query) use ($authority, $allowed) {
-            $query->whereExists(static::getRoleConstraint($authority, $allowed));
-            $query->orWhereExists(static::getAuthorityConstraint($authority, $allowed));
-            $query->orWhereExists(static::getEveryoneConstraint($allowed));
-        });
+        $abilitiesTable = Models::table('abilities');
+        $abilityColumns = Models::ability()->getConnection()->getSchemaBuilder()->getColumnListing($abilitiesTable);
+        foreach ($abilityColumns as $k => $abilityColumn) {
+            $sourceTable = in_array($abilityColumn, ['entity_id', 'entity_type'], true)
+                ? 'bouncer_effective_abilities'
+                : $abilitiesTable;
+
+            $abilityColumns[$k] = $sourceTable.'.'.$abilityColumn.' as '.$abilityColumn;
+        }
+
+        $effectiveColumns = [
+            $abilitiesTable.'.id as id',
+            $abilitiesTable.'.entity_id as entity_id',
+            $abilitiesTable.'.entity_type as entity_type',
+        ];
+
+        $abilitiesThroughRoles = static::abilitiesThroughRoles($authority, $allowed, $effectiveColumns, $abilities, $modelRestriction);
+        $existsThroughAuthority = Models::ability()->whereExists(static::getAuthorityConstraint($authority, $allowed, $abilities, $modelRestriction))->select($effectiveColumns)->byName($abilities);
+        $existsEveryone = Models::ability()->whereExists(static::getEveryoneConstraint($allowed))->select($effectiveColumns)->byName($abilities);
+
+        $effectiveAbilities = $abilitiesThroughRoles->union($existsThroughAuthority)->union($existsEveryone);
+
+        $abilitiesSubquery = Models::ability()
+            ->from($abilitiesTable)
+            ->joinSub(
+                $effectiveAbilities,
+                'bouncer_effective_abilities',
+                'bouncer_effective_abilities.id',
+                '=',
+                $abilitiesTable.'.id'
+            )
+            ->select($abilityColumns);
+
+        $query = Models::ability()->fromSub(
+            $abilitiesSubquery,
+            $abilitiesTable
+        )->byName($abilities);
+
+        if (! is_null($modelRestriction)) {
+            $query->forModel($modelRestriction);
+        } elseif (! is_null($abilities)) {
+            $query->where(function ($query) use ($abilitiesTable) {
+                $query->whereNull($abilitiesTable.'.entity_type')
+                    ->orWhere($abilitiesTable.'.entity_type', '*');
+            });
+        }
+
+        return $query;
     }
 
     /**
      * Get a query for the authority's forbidden abilities.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     public static function forbiddenForAuthority(Model $authority)
     {
@@ -37,81 +78,104 @@ class Abilities
     }
 
     /**
-     * Get a constraint for abilities that have been granted to the given authority through a role.
+     * Get abilities that have been granted to the given authority through a role.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @param  bool  $allowed
-     * @return \Closure
+     * @param  array  $abilityColumns
+     * @return Builder
      */
-    protected static function getRoleConstraint(Model $authority, $allowed)
+    protected static function abilitiesThroughRoles(Model $authority, $allowed, $abilityColumns, $abilities = null, $modelRestriction = null)
     {
-        return function ($query) use ($authority, $allowed) {
-            $permissions = Models::table('permissions');
-            $abilities   = Models::table('abilities');
-            $roles       = Models::table('roles');
+        $assignedRolesTable = Models::table('assigned_roles');
+        $permissionsTable = Models::table('permissions');
+        $abilitiesTable = Models::table('abilities');
+        $rolesTable = Models::table('roles');
+        $authorityTable = $authority->getTable();
 
-            $query->from($roles)
-                  ->join($permissions, $roles.'.id', '=', $permissions.'.entity_id')
-                  ->whereColumn("{$permissions}.ability_id", "{$abilities}.id")
-                  ->where($permissions.".forbidden", ! $allowed)
-                  ->where($permissions.".entity_type", Models::role()->getMorphClass());
+        $query = Models::ability()->from($abilitiesTable)
+            ->join($permissionsTable, $permissionsTable.'.ability_id', '=', $abilitiesTable.'.id')
+            ->whereColumn("{$permissionsTable}.ability_id", "{$abilitiesTable}.id")
+            ->where($permissionsTable.'.forbidden', ! $allowed)
+            ->where($permissionsTable.'.entity_type', Models::role()->getMorphClass())
+            ->join($rolesTable, $rolesTable.'.id', '=', $permissionsTable.'.entity_id');
 
-            Models::scope()->applyToModelQuery($query, $roles);
-            Models::scope()->applyToRelationQuery($query, $permissions);
+        Models::scope()->applyToModelQuery($query, $rolesTable);
+        Models::scope()->applyToRelationQuery($query, $permissionsTable);
+        $query->join($assignedRolesTable, "{$assignedRolesTable}.role_id", '=', $rolesTable.'.id');
+        $query->join($authorityTable.' as authority', 'authority.'.$authority->getKeyName(), '=', $assignedRolesTable.'.entity_id')
+            ->where("{$assignedRolesTable}.entity_type", $authority->getMorphClass())
+            ->where("authority.{$authority->getKeyName()}", $authority->getKey());
 
-            $query->where(function ($query) use ($roles, $authority, $allowed) {
-                $query->whereExists(static::getAuthorityRoleConstraint($authority));
-            });
-        };
-    }
+        Models::scope()->applyToRelationQuery($query, $assignedRolesTable);
+        $abilityColumnsThroughRoles = $abilityColumns;
+        $grammar = $query->getQuery()->getGrammar();
+        $restrictedType = $grammar->wrap($assignedRolesTable.'.restricted_to_type');
+        $restrictedId = $grammar->wrap($assignedRolesTable.'.restricted_to_id');
+        $bindings = [];
 
-    /**
-     * Get a constraint for roles that are assigned to the given authority.
-     *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
-     * @return \Closure
-     */
-    protected static function getAuthorityRoleConstraint(Model $authority)
-    {
-        return function ($query) use ($authority) {
-            $pivot  = Models::table('assigned_roles');
-            $roles  = Models::table('roles');
-            $table  = $authority->getTable();
+        if (Relation::morphMap()) {
+            $restrictedType = 'case '.$restrictedType;
 
-            $query->from($table)
-                  ->join($pivot, "{$table}.{$authority->getKeyName()}", '=', $pivot.'.entity_id')
-                  ->whereColumn("{$pivot}.role_id", "{$roles}.id")
-                  ->where($pivot.'.entity_type', $authority->getMorphClass())
-                  ->where("{$table}.{$authority->getKeyName()}", $authority->getKey());
+            foreach (Relation::morphMap() as $alias => $class) {
+                $restrictedType .= ' when ? then ?';
+                $bindings[] = $class;
+                $bindings[] = (string) $alias;
+            }
 
-            Models::scope()->applyToModelQuery($query, $roles);
-            Models::scope()->applyToRelationQuery($query, $pivot);
-        };
+            $restrictedType .= ' else '.$grammar->wrap($assignedRolesTable.'.restricted_to_type').' end';
+        }
+
+        foreach ($abilityColumnsThroughRoles as $k => $abilityColumnsThroughRole) {
+            if ($abilityColumnsThroughRole == $abilitiesTable.'.'.'entity_id as entity_id') {
+                $abilityColumnsThroughRoles[$k] = 'case when '.$grammar->wrap($assignedRolesTable.'.restricted_to_type').' is null then '
+                    .$grammar->wrap($abilitiesTable.'.entity_id').' else coalesce('.$restrictedId.', '
+                    .$grammar->wrap($abilitiesTable.'.entity_id').') end as '.$grammar->wrap('entity_id');
+            } elseif ($abilityColumnsThroughRole == $abilitiesTable.'.'.'entity_type as entity_type') {
+                $abilityColumnsThroughRoles[$k] = 'case when '.$grammar->wrap($assignedRolesTable.'.restricted_to_type').' is null then '
+                    .$grammar->wrap($abilitiesTable.'.entity_type').' else '.$restrictedType.' end as '.$grammar->wrap('entity_type');
+            } else {
+                $abilityColumnsThroughRoles[$k] = $grammar->wrap($abilityColumnsThroughRole);
+            }
+        }
+
+        $query->where(function ($query) use ($abilitiesTable, $assignedRolesTable, $restrictedType, $bindings) {
+            $query->whereNull($assignedRolesTable.'.restricted_to_type')
+                ->orWhereNull($abilitiesTable.'.entity_type')
+                ->orWhere($abilitiesTable.'.entity_type', '*')
+                ->orWhereRaw($query->getQuery()->getGrammar()->wrap($abilitiesTable.'.entity_type').' = '.$restrictedType, $bindings);
+        })->where(function ($query) use ($abilitiesTable, $assignedRolesTable) {
+            $query->whereNull($assignedRolesTable.'.restricted_to_id')
+                ->orWhereNull($abilitiesTable.'.entity_id')
+                ->orWhereColumn($abilitiesTable.'.entity_id', $assignedRolesTable.'.restricted_to_id');
+        });
+
+        $query->selectRaw(implode(', ', $abilityColumnsThroughRoles), $bindings)->byName($abilities);
+
+        return $query;
     }
 
     /**
      * Get a constraint for abilities that have been granted to the given authority.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $authority
      * @param  bool  $allowed
      * @return \Closure
      */
-    protected static function getAuthorityConstraint(Model $authority, $allowed)
+    protected static function getAuthorityConstraint(Model $authority, $allowed, $abilities, $modelRestriction = null)
     {
         return function ($query) use ($authority, $allowed) {
-            $permissions = Models::table('permissions');
-            $abilities   = Models::table('abilities');
-            $table       = $authority->getTable();
+            $permissionsTable = Models::table('permissions');
+            $abilitiesTable = Models::table('abilities');
+            $authorityTable = $authority->getTable();
 
-            $query->from($table)
-                  ->join($permissions, "{$table}.{$authority->getKeyName()}", '=', $permissions.'.entity_id')
-                  ->whereColumn("{$permissions}.ability_id", "{$abilities}.id")
-                  ->where("{$permissions}.forbidden", ! $allowed)
-                  ->where("{$permissions}.entity_type", $authority->getMorphClass())
-                  ->where("{$table}.{$authority->getKeyName()}", $authority->getKey());
+            $query->from($authorityTable)
+                ->join($permissionsTable, "{$authorityTable}.{$authority->getKeyName()}", '=', $permissionsTable.'.entity_id')
+                ->whereColumn("{$permissionsTable}.ability_id", "{$abilitiesTable}.id")
+                ->where("{$permissionsTable}.forbidden", ! $allowed)
+                ->where("{$permissionsTable}.entity_type", $authority->getMorphClass())
+                ->where("{$authorityTable}.{$authority->getKeyName()}", $authority->getKey());
 
-            Models::scope()->applyToModelQuery($query, $abilities);
-            Models::scope()->applyToRelationQuery($query, $permissions);
+            Models::scope()->applyToModelQuery($query, $abilitiesTable);
+            Models::scope()->applyToRelationQuery($query, $permissionsTable);
         };
     }
 
@@ -124,15 +188,15 @@ class Abilities
     protected static function getEveryoneConstraint($allowed)
     {
         return function ($query) use ($allowed) {
-            $permissions = Models::table('permissions');
-            $abilities   = Models::table('abilities');
+            $permissionsTable = Models::table('permissions');
+            $abilitiesTable = Models::table('abilities');
 
-            $query->from($permissions)
-                  ->whereColumn("{$permissions}.ability_id", "{$abilities}.id")
-                  ->where("{$permissions}.forbidden", ! $allowed)
-                  ->whereNull('entity_id');
+            $query->from($permissionsTable)
+                ->whereColumn("{$permissionsTable}.ability_id", "{$abilitiesTable}.id")
+                ->where("{$permissionsTable}.forbidden", ! $allowed)
+                ->whereNull('entity_id');
 
-            Models::scope()->applyToRelationQuery($query, $permissions);
+            Models::scope()->applyToRelationQuery($query, $permissionsTable);
         };
     }
 }

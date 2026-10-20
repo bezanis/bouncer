@@ -2,6 +2,9 @@
 
 namespace Silber\Bouncer\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+
 class TablePrefixTest extends BaseTestCase
 {
     use Concerns\TestsClipboards;
@@ -13,26 +16,22 @@ class TablePrefixTest extends BaseTestCase
         $this->db()->connection()->setTablePrefix('bouncer_');
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function test_ability_queries_work_with_prefix($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function test_ability_queries_work_with_prefix($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->allow($user)->everything();
 
         $this->assertTrue($bouncer->can('do-something'));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function test_role_queries_work_with_prefix($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function test_role_queries_work_with_prefix($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $bouncer->assign('artisan')->to($user);
 

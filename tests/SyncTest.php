@@ -2,24 +2,26 @@
 
 namespace Silber\Bouncer\Tests;
 
-use Silber\Bouncer\Database\Role;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
 use Silber\Bouncer\Database\Ability;
+use Silber\Bouncer\Database\Role;
+use Workbench\App\Models\Account;
+use Workbench\App\Models\User;
 
 class SyncTest extends BaseTestCase
 {
     use Concerns\TestsClipboards;
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function syncing_roles($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function syncing_roles($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
-        $admin      = $this->role('admin');
-        $editor     = $this->role('editor');
-        $reviewer   = $this->role('reviewer');
+        $admin = $this->role('admin');
+        $editor = $this->role('editor');
+        $reviewer = $this->role('reviewer');
         $subscriber = $this->role('subscriber');
 
         $user->assign([$admin, $editor]);
@@ -32,13 +34,11 @@ class SyncTest extends BaseTestCase
         $this->assertTrue($bouncer->is($user)->notAn($admin));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function syncing_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function syncing_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $editSite = Ability::create(['name' => 'edit-site']);
         $banUsers = Ability::create(['name' => 'ban-users']);
@@ -57,13 +57,11 @@ class SyncTest extends BaseTestCase
         $this->assertTrue($bouncer->can('access-dashboard'));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function syncing_abilities_with_a_map($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function syncing_abilities_with_a_map($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $deleteUser = Ability::createForModel($user, 'delete');
         $createAccounts = Ability::createForModel(Account::class, 'create');
@@ -86,13 +84,11 @@ class SyncTest extends BaseTestCase
         $this->assertTrue($bouncer->can('access-dashboard'));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function syncing_forbidden_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function syncing_forbidden_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $editSite = Ability::create(['name' => 'edit-site']);
         $banUsers = Ability::create(['name' => 'ban-users']);
@@ -112,13 +108,11 @@ class SyncTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('access-dashboard'));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function syncing_a_roles_abilities($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function syncing_a_roles_abilities($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $editSite = Ability::create(['name' => 'edit-site']);
         $banUsers = Ability::create(['name' => 'ban-users']);
@@ -138,10 +132,8 @@ class SyncTest extends BaseTestCase
         $this->assertTrue($bouncer->can('access-dashboard'));
     }
 
-    /**
-     * @test
-     */
-    function syncing_user_abilities_does_not_alter_role_abilities_with_same_id()
+    #[Test]
+    public function syncing_user_abilities_does_not_alter_role_abilities_with_same_id()
     {
         $user = User::create(['id' => 1]);
         $bouncer = $this->bouncer($user);
@@ -157,10 +149,8 @@ class SyncTest extends BaseTestCase
         $this->assertTrue($role->can('drink'));
     }
 
-    /**
-     * @test
-     */
-    function syncing_abilities_does_not_affect_another_entity_type_with_same_id()
+    #[Test]
+    public function syncing_abilities_does_not_affect_another_entity_type_with_same_id()
     {
         $user = User::create(['id' => 1]);
         $account = Account::create(['id' => 1]);
@@ -179,10 +169,8 @@ class SyncTest extends BaseTestCase
         $this->assertTrue($account->can('relax'));
     }
 
-    /**
-     * @test
-     */
-    function syncing_roles_does_not_affect_another_entity_type_with_same_id()
+    #[Test]
+    public function syncing_roles_does_not_affect_another_entity_type_with_same_id()
     {
         $user = User::create(['id' => 1]);
         $account = Account::create(['id' => 1]);

@@ -3,15 +3,16 @@
 namespace Silber\Bouncer\Database\Concerns;
 
 use App\User;
-use Silber\Bouncer\Database\Role;
-use Silber\Bouncer\Database\Models;
-use Silber\Bouncer\Constraints\Group;
-use Silber\Bouncer\Constraints\constrainer;
-use Silber\Bouncer\Database\Titles\AbilityTitle;
-use Silber\Bouncer\Database\Scope\TenantScope;
-use Silber\Bouncer\Database\Queries\AbilitiesForModel;
-
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Silber\Bouncer\Constraints\constrainer;
+use Silber\Bouncer\Constraints\Group;
+use Silber\Bouncer\Database\Models;
+use Silber\Bouncer\Database\Queries\AbilitiesForModel;
+use Silber\Bouncer\Database\Role;
+use Silber\Bouncer\Database\Scope\TenantScope;
+use Silber\Bouncer\Database\Titles\AbilityTitle;
 
 trait IsAbility
 {
@@ -50,7 +51,6 @@ trait IsAbility
     /**
      * Set the "options" attribute.
      *
-     * @param  array  $options
      * @return void
      */
     public function setOptionsAttribute(array $options)
@@ -71,12 +71,12 @@ trait IsAbility
     /**
      * Get the ability's constraints.
      *
-     * @return \Silber\Bouncer\Constraints\Constrainer
+     * @return constrainer
      */
     public function getConstraints()
     {
         if (empty($this->options['constraints'])) {
-            return new Group();
+            return new Group;
         }
 
         $data = $this->options['constraints'];
@@ -87,10 +87,9 @@ trait IsAbility
     /**
      * Set the ability's constraints.
      *
-     * @param  \Silber\Bouncer\Constraints\Constrainer  $constrainer
      * @return $this
      */
-    public function setConstraints(Constrainer $constrainer)
+    public function setConstraints(constrainer $constrainer)
     {
         $this->options = array_merge($this->options, [
             'constraints' => $constrainer->data(),
@@ -102,7 +101,7 @@ trait IsAbility
     /**
      * Create a new ability for a specific model.
      *
-     * @param  \Illuminate\Database\Eloquent\Model|string  $model
+     * @param  Model|string  $model
      * @param  string|array  $attributes
      * @return static
      */
@@ -118,7 +117,7 @@ trait IsAbility
     /**
      * Make a new ability for a specific model.
      *
-     * @param  \Illuminate\Database\Eloquent\Model|string  $model
+     * @param  Model|string  $model
      * @param  string|array  $attributes
      * @return static
      */
@@ -140,14 +139,12 @@ trait IsAbility
 
         return (new static)->forceFill($attributes + [
             'entity_type' => $model->getMorphClass(),
-            'entity_id'   => $model->exists ? $model->getKey() : null,
+            'entity_id' => $model->exists ? $model->getKey() : null,
         ]);
     }
 
     /**
      * The roles relationship.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\MorphToMany
      */
     public function roles(): MorphToMany
     {
@@ -162,8 +159,6 @@ trait IsAbility
 
     /**
      * The users relationship.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\MorphToMany
      */
     public function users(): MorphToMany
     {
@@ -213,13 +208,16 @@ trait IsAbility
     /**
      * Constrain a query to having the given name.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder  $query
-     * @return string|array  $name
-     * @return bool  $strict
+     * @param  Builder|\Illuminate\Database\Query\Builder  $query
+     * @return string|array $name
+     * @return bool $strict
      * @return void
      */
     public function scopeByName($query, $name, $strict = false)
     {
+        if ($name === null) {
+            return;
+        }
         $names = (array) $name;
 
         if (! $strict && $name !== '*') {
@@ -232,7 +230,7 @@ trait IsAbility
     /**
      * Constrain a query to simple abilities.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder  $query
+     * @param  Builder|\Illuminate\Database\Query\Builder  $query
      * @return void
      */
     public function scopeSimpleAbility($query)
@@ -243,8 +241,8 @@ trait IsAbility
     /**
      * Constrain a query to an ability for a specific model.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder  $query
-     * @param  \Illuminate\Database\Eloquent\Model|string  $model
+     * @param  Builder|\Illuminate\Database\Query\Builder  $query
+     * @param  Model|string  $model
      * @param  bool  $strict
      * @return void
      */

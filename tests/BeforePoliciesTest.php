@@ -2,22 +2,20 @@
 
 namespace Silber\Bouncer\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
 use Silber\Bouncer\Bouncer;
-use Illuminate\Auth\Access\Gate;
-use Silber\Bouncer\Database\Role;
-use Silber\Bouncer\Database\Ability;
+use Workbench\App\Models\Account;
 
 class BeforePoliciesTest extends BaseTestCase
 {
     use Concerns\TestsClipboards;
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function policy_forbids_and_bouncer_allows($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function policy_forbids_and_bouncer_allows($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $this->setUpWithPolicy($bouncer);
 
@@ -32,13 +30,11 @@ class BeforePoliciesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('view', $account));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function policy_allows_and_bouncer_forbids($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function policy_allows_and_bouncer_forbids($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $this->setUpWithPolicy($bouncer);
 
@@ -53,13 +49,11 @@ class BeforePoliciesTest extends BaseTestCase
         $this->assertTrue($bouncer->cannot('view', $account));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function passes_auth_check_when_bouncer_allows($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function passes_auth_check_when_bouncer_allows($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $this->setUpWithPolicy($bouncer);
 
@@ -74,13 +68,11 @@ class BeforePoliciesTest extends BaseTestCase
         $this->assertTrue($bouncer->can('view', $account));
     }
 
-    /**
-     * @test
-     * @dataProvider bouncerProvider
-     */
-    function fails_auth_check_when_bouncer_does_not_allow($provider)
+    #[Test]
+    #[DataProvider('bouncerProvider')]
+    public function fails_auth_check_when_bouncer_does_not_allow($provider)
     {
-        list($bouncer, $user) = $provider();
+        [$bouncer, $user] = $provider();
 
         $this->setUpWithPolicy($bouncer);
 
@@ -96,7 +88,7 @@ class BeforePoliciesTest extends BaseTestCase
     /**
      * Set up the given Bouncer instance with the test policy.
      *
-     * @param \Silber\Buoncer\Bouncer  $bouncer
+     * @param  \Silber\Buoncer\Bouncer  $bouncer
      */
     protected function setUpWithPolicy(Bouncer $bouncer)
     {

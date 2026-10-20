@@ -2,14 +2,15 @@
 
 namespace Silber\Bouncer\Tests;
 
+use PHPUnit\Framework\Attributes\Test;
 use Silber\Bouncer\Database\Ability;
+use Workbench\App\Models\Account;
+use Workbench\App\Models\User;
 
 class TitledAbilitiesTest extends BaseTestCase
 {
-    /**
-     * @test
-     */
-    function allowing_simple_ability()
+    #[Test]
+    public function allowing_simple_ability()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -20,10 +21,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Dashboard administration');
     }
 
-    /**
-     * @test
-     */
-    function allowing_model_class_ability()
+    #[Test]
+    public function allowing_model_class_ability()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -34,10 +33,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Create users');
     }
 
-    /**
-     * @test
-     */
-    function allowing_model_ability()
+    #[Test]
+    public function allowing_model_ability()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -48,10 +45,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Delete user #1');
     }
 
-    /**
-     * @test
-     */
-    function allowing_everything()
+    #[Test]
+    public function allowing_everything()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -62,10 +57,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Omnipotent');
     }
 
-    /**
-     * @test
-     */
-    function allowing_to_manage_a_model_class()
+    #[Test]
+    public function allowing_to_manage_a_model_class()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -76,10 +69,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Manage users');
     }
 
-    /**
-     * @test
-     */
-    function allowing_to_manage_a_model()
+    #[Test]
+    public function allowing_to_manage_a_model()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -90,10 +81,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Manage user #1');
     }
 
-    /**
-     * @test
-     */
-    function allowing_an_ability_on_everything()
+    #[Test]
+    public function allowing_an_ability_on_everything()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -104,10 +93,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Create anything');
     }
 
-    /**
-     * @test
-     */
-    function allowing_to_own_a_model_class()
+    #[Test]
+    public function allowing_to_own_a_model_class()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -118,10 +105,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Manage onwed account');
     }
 
-    /**
-     * @test
-     */
-    function allowing_to_own_a_model()
+    #[Test]
+    public function allowing_to_own_a_model()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -132,10 +117,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Manage user #1 when owned');
     }
 
-    /**
-     * @test
-     */
-    function allowing_to_own_everything()
+    #[Test]
+    public function allowing_to_own_everything()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -146,10 +129,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Manage anything onwed');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_simple_ability()
+    #[Test]
+    public function forbidding_simple_ability()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -160,10 +141,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Dashboard administration');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_model_class_ability()
+    #[Test]
+    public function forbidding_model_class_ability()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -174,10 +153,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Create users');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_model_ability()
+    #[Test]
+    public function forbidding_model_ability()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -188,10 +165,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Delete user #1');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_everything()
+    #[Test]
+    public function forbidding_everything()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -202,10 +177,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Omnipotent');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_to_manage_a_model_class()
+    #[Test]
+    public function forbidding_to_manage_a_model_class()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -216,10 +189,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Manage users');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_to_manage_a_model()
+    #[Test]
+    public function forbidding_to_manage_a_model()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -230,10 +201,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Manage user #1');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_an_ability_on_everything()
+    #[Test]
+    public function forbidding_an_ability_on_everything()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -244,10 +213,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Create anything');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_to_own_a_model_class()
+    #[Test]
+    public function forbidding_to_own_a_model_class()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -258,10 +225,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Manage onwed account');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_to_own_a_model()
+    #[Test]
+    public function forbidding_to_own_a_model()
     {
         $bouncer = $this->bouncer($user = User::create());
 
@@ -272,10 +237,8 @@ class TitledAbilitiesTest extends BaseTestCase
         $this->seeTitledAbility('Manage user #1 when owned');
     }
 
-    /**
-     * @test
-     */
-    function forbidding_to_own_everything()
+    #[Test]
+    public function forbidding_to_own_everything()
     {
         $bouncer = $this->bouncer($user = User::create());
 
