@@ -94,7 +94,6 @@ class Abilities
 
         $query = Models::ability()->from($abilitiesTable)
             ->join($permissionsTable, $permissionsTable.'.ability_id', '=', $abilitiesTable.'.id')
-            ->whereColumn("{$permissionsTable}.ability_id", "{$abilitiesTable}.id")
             ->where($permissionsTable.'.forbidden', ! $allowed)
             ->where($permissionsTable.'.entity_type', Models::role()->getMorphClass())
             ->join($rolesTable, $rolesTable.'.id', '=', $permissionsTable.'.entity_id');
@@ -125,17 +124,34 @@ class Abilities
             $restrictedType .= ' else '.$grammar->wrap($assignedRolesTable.'.restricted_to_type').' end';
         }
 
-        foreach ($abilityColumnsThroughRoles as $k => $abilityColumnsThroughRole) {
-            if ($abilityColumnsThroughRole == $abilitiesTable.'.'.'entity_id as entity_id') {
-                $abilityColumnsThroughRoles[$k] = 'case when '.$grammar->wrap($assignedRolesTable.'.restricted_to_type').' is null then '
-                    .$grammar->wrap($abilitiesTable.'.entity_id').' else coalesce('.$restrictedId.', '
-                    .$grammar->wrap($abilitiesTable.'.entity_id').') end as '.$grammar->wrap('entity_id');
-            } elseif ($abilityColumnsThroughRole == $abilitiesTable.'.'.'entity_type as entity_type') {
-                $abilityColumnsThroughRoles[$k] = 'case when '.$grammar->wrap($assignedRolesTable.'.restricted_to_type').' is null then '
-                    .$grammar->wrap($abilitiesTable.'.entity_type').' else '.$restrictedType.' end as '.$grammar->wrap('entity_type');
-            } else {
-                $abilityColumnsThroughRoles[$k] = $grammar->wrap($abilityColumnsThroughRole);
-            }
+        $originalType = $grammar->wrap($abilitiesTable.'.entity_type');
+        $originalId = $grammar->wrap($abilitiesTable.'.entity_id');
+        $restrictionTypeColumn = $grammar->wrap($assignedRolesTable.'.restricted_to_type');
+        $roleBased = $grammar->wrap($abilitiesTable.'.role_based');
+
+        // Only blanket role-based abilities become global, and only when
+        // the role assignment has no entity restriction.
+        $globalRoleAbility = $roleBased.' = 1'
+            .' and '.$originalId.' is null'
+            .' and '.$restrictionTypeColumn.' is null'
+            .' and '.$restrictedId.' is null';
+
+        foreach ($abilityColumnsThroughRoles as $k => $column) {
+            $abilityColumnsThroughRoles[$k] = match ($column) {
+                $abilitiesTable.'.entity_id as entity_id' =>
+                    'case when '.$restrictionTypeColumn.' is null'
+                    .' then '.$originalId
+                    .' else coalesce('.$restrictedId.', '.$originalId.')'
+                    .' end as '.$grammar->wrap('entity_id'),
+
+                $abilitiesTable.'.entity_type as entity_type' =>
+                    'case when '.$globalRoleAbility.' then null'
+                    .' when '.$restrictionTypeColumn.' is null then '.$originalType
+                    .' else '.$restrictedType
+                    .' end as '.$grammar->wrap('entity_type'),
+
+                default => $grammar->wrap($column),
+            };
         }
 
         $query->where(function ($query) use ($abilitiesTable, $assignedRolesTable, $restrictedType, $bindings) {
